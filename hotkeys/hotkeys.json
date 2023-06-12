@@ -150,6 +150,13 @@
     "type":"separator"
   },
   {
+    "type":"command",
+    "label":"Verify",
+    "file":"../protocol_editor/basic_example.py",
+    "function_name":"verify_session",
+    "shortcut":""
+  },
+  {
     "type":"menu",
     "label":"&Graph",
     "items":[

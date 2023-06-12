@@ -14,14 +14,15 @@ from NodeGraphQt import (
     # NodesPaletteWidget
 )
 
-# import example nodes from the "example_nodes" package
 from nodes import ofp_nodes, slab_nodes
 
 from functools import partial
 
-def counter(graph):
+def verify_session(graph):
     print(graph.serialize_session())
-    # all_nodes = graph.all_nodes()
+
+def counter(graph):
+    all_nodes = graph.all_nodes()
     # if len(all_nodes) > 0:
     #     for node in all_nodes:
     #         rgb = node.color()
