@@ -4,17 +4,31 @@ import os
 import signal
 
 from Qt import QtCore, QtWidgets
+from Qt.QtCore import QTimer
 from Qt.QtGui import QPalette, QColor
 
 from NodeGraphQt import (
     NodeGraph,
-    PropertiesBinWidget,
-    NodesTreeWidget,
-    NodesPaletteWidget
+    # PropertiesBinWidget,
+    # NodesTreeWidget,
+    # NodesPaletteWidget
 )
 
 # import example nodes from the "example_nodes" package
 from nodes import ofp_nodes, slab_nodes
+
+from functools import partial
+
+def counter(graph):
+    print(graph.serialize_session())
+    # all_nodes = graph.all_nodes()
+    # if len(all_nodes) > 0:
+    #     for node in all_nodes:
+    #         rgb = node.color()
+    #         if rgb == (13, 18, 23):
+    #             node.set_color(255, 0, 0)
+    #         print(rgb)
+    
 
 if __name__ == '__main__':
     # handle SIGINT to make the app terminate on CTRL+C
@@ -53,5 +67,10 @@ if __name__ == '__main__':
     graph_widget = graph.widget
     graph_widget.resize(1100, 800)
     graph_widget.show()
+
+    t1 = QTimer()
+    t1.setInterval(5 * 1000)  # msec
+    t1.timeout.connect(partial(counter, graph))
+    t1.start()
 
     app.exec_()
