@@ -35,7 +35,7 @@ if __name__ == '__main__':
     graph = NodeGraph()
 
     # set up context menu for the node graph.
-    graph.set_context_menu_from_file('../mysample/hotkeys/hotkeys.json')
+    graph.set_context_menu_from_file('hotkeys/hotkeys.json')
 
     # registered example nodes.
     graph.register_nodes([
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     graph_widget.resize(1100, 800)
     graph_widget.show()
 
-    # # create node with custom text color and disable it.
+    # create node with custom text color and disable it.
     # n_basic_a = graph.create_node(
     #     'nodes.basic.BasicNodeA', text_color='#feab20')
     # n_basic_a.set_disabled(True)
