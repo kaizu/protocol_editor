@@ -11,13 +11,14 @@ from Qt.QtGui import QPalette, QColor
 
 from NodeGraphQt import (
     NodeGraph,
+    BaseNode,
     # PropertiesBinWidget,
     # NodesTreeWidget,
     # NodesPaletteWidget
 )
 from NodeGraphQt.constants import PortTypeEnum
 
-from nodes import sample_nodes
+from nodes import PortTraitsEnum, sample_nodes
 
 import itertools
 import functools
@@ -26,9 +27,18 @@ logger = getLogger(__name__)
 
 
 def verify_session(graph):
-    all_nodes = graph.all_nodes()
+    config_node = graph.get_node_by_name("Config")
+
+    all_nodes = (node for node in graph.all_nodes() if isinstance(node, sample_nodes.SampleNode))
     for node in all_nodes:
         is_valid = True
+
+        station = config_node.get_station(node)
+        node.set_property("station", station, push_undo=False)
+
+        if any(node.get_port_traits(port.name()) in PortTraitsEnum.OBJECT for port in itertools.chain(node.input_ports(), node.output_ports())):
+            is_valid = is_valid and station != ""
+
         for port in itertools.chain(
             node.input_ports(), node.output_ports()
         ):
@@ -72,10 +82,53 @@ class MyNodeGraph(NodeGraph):
         self.nodes_deleted.connect(self.dump)
         self.port_connected.connect(self.dump)
         self.port_disconnected.connect(self.dump)
+        self.property_changed.connect(self.dump)
 
     def dump(self, *args, **kwargs):
         logger.info("dump %s %s", args, kwargs)
         verify_session(self)
+
+class ConfigNode(BaseNode):
+    """
+    A config node class.
+    """
+
+    # unique node identifier.
+    __identifier__ = 'nodes.config'
+
+    # initial default node name.
+    NODE_NAME = 'Config'
+
+    def __init__(self):
+        super(ConfigNode, self).__init__()
+
+        # create the checkboxes.
+        for i in range(1, 6):
+            self.add_checkbox(f"cb{i}", "", f"station{i}", True)
+
+    def get_station(self, node):
+        if not isinstance(node, sample_nodes.SampleNode):
+            return ""
+        if (
+            isinstance(node, sample_nodes.ObjectInputNode)
+            or isinstance(node, sample_nodes.ObjectOutputNode)
+        ):
+            if self.get_property("cb1"):
+                return "station1"
+        if isinstance(node, sample_nodes.UniNode):
+            if self.get_property("cb2"):
+                return "station2"
+            if self.get_property("cb3"):
+                return "station3"
+        if isinstance(node, sample_nodes.BiNode):
+            if self.get_property("cb4"):
+                return "station4"
+            if self.get_property("cb5"):
+                return "station5"
+        if isinstance(node, sample_nodes.MeasurementNode):
+            if self.get_property("cb2"):
+                return "station2"
+        return ""
 
 
 if __name__ == '__main__':
@@ -106,17 +159,34 @@ if __name__ == '__main__':
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
 
     graph.register_nodes([
-        sample_nodes.DataInputNode,
+        sample_nodes.DataOutputNode,
         sample_nodes.ObjectInputNode,
         sample_nodes.ObjectOutputNode,
         sample_nodes.UniNode,
+        sample_nodes.BiNode,
+        sample_nodes.MeasurementNode,
+        ConfigNode,
     ])
 
     # show the node graph widget.
     graph_widget = graph.widget
     graph_widget.resize(1100, 800)
     graph_widget.show()
+    
+    config_node = graph.add_node(ConfigNode())
+    
+    # # create a node properties bin widget.
+    # properties_bin = PropertiesBinWidget(node_graph=graph)
+    # properties_bin.setWindowFlags(QtCore.Qt.Tool)
 
+    # # example show the node properties bin widget when a node is double clicked.
+    # def display_properties_bin(node):
+    #     if not properties_bin.isVisible():
+    #         properties_bin.show()
+
+    # # wire function to "node_double_clicked" signal.
+    # graph.node_double_clicked.connect(display_properties_bin)
+    
     # t1 = QTimer()
     # t1.setInterval(5 * 1000)  # msec
     # t1.timeout.connect(functools.partial(counter, graph))
