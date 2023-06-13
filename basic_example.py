@@ -1,5 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+from logging import getLogger
+
 import os
 import signal
 
@@ -13,14 +15,44 @@ from NodeGraphQt import (
     # NodesTreeWidget,
     # NodesPaletteWidget
 )
+from NodeGraphQt.constants import PortTypeEnum
 
 from nodes import sample_nodes
 
-from functools import partial
+import itertools
+import functools
 
-# {'graph': {'layout_direction': 0, 'acyclic': True, 'pipe_collision': False, 'pipe_slicing': True, 'pipe_style': 1, 'accept_connection_types': {}, 'reject_connection_types': {}}, 'nodes': {'0x1a588ca4c10': {'type_': 'nodes.sample.InputNode', 'icon': None, 'name': 'Input', 'color': (13, 18, 23, 255), 'border_color': (74, 84, 85, 255), 'text_color': (255, 255, 255, 180), 'disabled': False, 'selected': False, 'visible': True, 'width': 160, 'height': 60, 'pos': [-5.023858959254142, 256.21680692196236], 'layout_direction': 0, 'port_deletion_allowed': False, 'subgraph_session': {}}, '0x1a588ca4e80': {'type_': 'nodes.sample.UniNode', 'icon': None, 'name': 'Uni', 'color': (13, 18, 23, 255), 'border_color': (74, 84, 85, 255), 'text_color': (255, 255, 255, 180), 'disabled': False, 'selected': False, 'visible': True, 'width': 160, 'height': 60, 'pos': [277.31701455082987, 335.59377847817814], 'layout_direction': 0, 'port_deletion_allowed': False, 'subgraph_session': {}}}, 'connections': [{'out': ['0x1a588ca4c10', 'out'], 'in': ['0x1a588ca4e80', 'in']}]}
+logger = getLogger(__name__)
+
+
 def verify_session(graph):
-    print(graph.serialize_session())
+    all_nodes = graph.all_nodes()
+    for node in all_nodes:
+        is_valid = True
+        for port in itertools.chain(
+            node.input_ports(), node.output_ports()
+        ):
+            connected_ports = port.connected_ports()
+            if len(connected_ports) == 0:
+                is_valid = False
+                break
+
+            port_traits = node.get_port_traits(port.name())
+            for another_port in connected_ports:
+                another_traits = another_port.node().get_port_traits(another_port.name())
+                if (
+                    (port.type_() == PortTypeEnum.IN.value and another_traits not in port_traits)
+                    or (port.type_() == PortTypeEnum.OUT.value and port_traits not in another_traits)
+                ):
+                    is_valid = False
+                    break
+
+        if is_valid:
+            node.set_color(13, 18, 23)
+        else:
+            node.set_color(180, 18, 23)
+
+    # logger.info(graph.serialize_session())
 
 def counter(graph):
     all_nodes = graph.all_nodes()
@@ -31,8 +63,30 @@ def counter(graph):
     #             node.set_color(255, 0, 0)
     #         print(rgb)
     
+class MyNodeGraph(NodeGraph):
+
+    def __init__(self):
+        super(MyNodeGraph, self).__init__()
+
+        self.node_created.connect(self.dump)
+        self.nodes_deleted.connect(self.dump)
+        self.port_connected.connect(self.dump)
+        self.port_disconnected.connect(self.dump)
+
+    def dump(self, *args, **kwargs):
+        logger.info("dump %s %s", args, kwargs)
+        verify_session(self)
+
 
 if __name__ == '__main__':
+    from logging import StreamHandler, Formatter, INFO
+    handler = StreamHandler()
+    handler.setLevel(INFO)
+    formatter = Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(INFO)
+    
     # handle SIGINT to make the app terminate on CTRL+C
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -46,14 +100,15 @@ if __name__ == '__main__':
     app.setPalette(mypalette)
 
     # create graph controller.
-    graph = NodeGraph()
+    graph = MyNodeGraph()
 
     # set up context menu for the node graph.
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
 
     graph.register_nodes([
-        sample_nodes.InputNode,
-        sample_nodes.OutputNode,
+        sample_nodes.DataInputNode,
+        sample_nodes.ObjectInputNode,
+        sample_nodes.ObjectOutputNode,
         sample_nodes.UniNode,
     ])
 
@@ -62,9 +117,9 @@ if __name__ == '__main__':
     graph_widget.resize(1100, 800)
     graph_widget.show()
 
-    t1 = QTimer()
-    t1.setInterval(5 * 1000)  # msec
-    t1.timeout.connect(partial(counter, graph))
-    t1.start()
+    # t1 = QTimer()
+    # t1.setInterval(5 * 1000)  # msec
+    # t1.timeout.connect(functools.partial(counter, graph))
+    # t1.start()
 
     app.exec_()

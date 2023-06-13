@@ -1,3 +1,5 @@
+from enum import IntFlag, auto
+
 from Qt import QtGui, QtCore
 from NodeGraphQt import BaseNode
 
@@ -43,6 +45,10 @@ def draw_square_port(painter, rect, info):
 
     painter.restore()
 
+class PortTraitsEnum(IntFlag):
+    DATA = auto()
+    OBJECT = auto()
+
 class BasicNode(BaseNode):
     """
     A base node for object flow programming.
@@ -53,14 +59,23 @@ class BasicNode(BaseNode):
     def __init__(self, qgraphics_item=None):
         super(BasicNode, self).__init__(qgraphics_item)
 
+        self.__port_traits = dict()
+
     def add_data_input(self, name, multi_input=False):
         self.add_input(name, color=(180, 80, 0), multi_input=multi_input)
+        self.__port_traits[name] = PortTraitsEnum.DATA
 
     def add_data_output(self, name, multi_output=True):
         self.add_output(name, color=(180, 80, 0), multi_output=multi_output)
+        self.__port_traits[name] = PortTraitsEnum.DATA
 
     def add_object_input(self, name, multi_input=False):
         self.add_input(name, multi_input=multi_input, painter_func=draw_square_port)
+        self.__port_traits[name] = PortTraitsEnum.OBJECT
 
     def add_object_output(self, name, multi_output=False):
         self.add_output(name, multi_output=multi_output, painter_func=draw_square_port)
+        self.__port_traits[name] = PortTraitsEnum.OBJECT
+
+    def get_port_traits(self, name):
+        return self.__port_traits[name]

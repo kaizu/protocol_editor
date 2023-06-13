@@ -1,7 +1,7 @@
 from nodes import BasicNode
 
 
-class InputNode(BasicNode):
+class ObjectInputNode(BasicNode):
     """
     A node class with 1 output.
     """
@@ -10,14 +10,30 @@ class InputNode(BasicNode):
     __identifier__ = 'nodes.sample'
 
     # initial default node name.
-    NODE_NAME = 'Input'
+    NODE_NAME = 'ObjectInput'
 
     def __init__(self):
-        super(InputNode, self).__init__()
+        super(ObjectInputNode, self).__init__()
 
         self.add_object_output('out')
 
-class OutputNode(BasicNode):
+class DataInputNode(BasicNode):
+    """
+    A node class with 1 output.
+    """
+
+    # unique node identifier.
+    __identifier__ = 'nodes.sample'
+
+    # initial default node name.
+    NODE_NAME = 'DataInput'
+
+    def __init__(self):
+        super(DataInputNode, self).__init__()
+
+        self.add_data_output('out')
+
+class ObjectOutputNode(BasicNode):
     """
     A node class with 1 input.
     """
@@ -26,10 +42,10 @@ class OutputNode(BasicNode):
     __identifier__ = 'nodes.sample'
 
     # initial default node name.
-    NODE_NAME = 'Output'
+    NODE_NAME = 'ObjectOutput'
 
     def __init__(self):
-        super(OutputNode, self).__init__()
+        super(ObjectOutputNode, self).__init__()
 
         self.add_object_input('in')
 
