@@ -89,23 +89,23 @@ class MyModel:
     def get_station(self, node):
         if not isinstance(node, sample_nodes.SampleNode):
             return ""
-        if (
+        elif (
             isinstance(node, sample_nodes.ObjectInputNode)
             or isinstance(node, sample_nodes.ObjectOutputNode)
         ):
             if self.get_property("station1"):
                 return "station1"
-        if isinstance(node, sample_nodes.ObjectUniNode):
+        elif isinstance(node, sample_nodes.ObjectUniNode):
             if self.get_property("station2"):
                 return "station2"
             if self.get_property("station3"):
                 return "station3"
-        if isinstance(node, sample_nodes.ObjectBiNode):
+        elif isinstance(node, sample_nodes.ObjectBiNode):
             if self.get_property("station4"):
                 return "station4"
             if self.get_property("station5"):
                 return "station5"
-        if isinstance(node, sample_nodes.MeasurementNode):
+        elif isinstance(node, sample_nodes.MeasurementNode):
             if self.get_property("station2"):
                 return "station2"
         return ""
@@ -131,13 +131,13 @@ class MyNodeGraph(NodeGraph):
         if isinstance(node, GraphPropertyNode):
             for name in node.property_names:
                 if not self.__mymodel.has_property(name):
-                    self.__mymodel.set_property(name, True)
+                    self.set_property(name, True)
             node.update_property()
         verify_session(self)
 
     def _property_changed(self, node, name, value):
         if isinstance(node, GraphPropertyNode) and self.__mymodel.has_property(name):
-            self.__mymodel.set_property(name, value)
+            self.set_property(name, value)
         verify_session(self)
 
     def set_property(self, name, value):
