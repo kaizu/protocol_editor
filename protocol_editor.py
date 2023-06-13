@@ -70,49 +70,21 @@ def counter(graph):
     #         if rgb == (13, 18, 23):
     #             node.set_color(255, 0, 0)
     #         print(rgb)
-    
-class MyNodeGraph(NodeGraph):
+
+class MyModel:
 
     def __init__(self):
-        super(MyNodeGraph, self).__init__()
-
-        self.node_created.connect(self._node_created)
-        self.nodes_deleted.connect(self.dump)
-        self.port_connected.connect(self.dump)
-        self.port_disconnected.connect(self.dump)
-        self.property_changed.connect(self._property_changed)
-
         self.__property = dict()
-
-    def dump(self, *args, **kwargs):
-        logger.info("dump %s %s", args, kwargs)
-        verify_session(self)
-
-    def _node_created(self, node):
-        if isinstance(node, GraphPropertyNode):
-            for name in node.property_names:
-                if name not in self.__property:
-                    self.set_property(name, True)
-            node.update_property()
-        verify_session(self)
-
-    def _property_changed(self, node, name, value):
-        if isinstance(node, GraphPropertyNode) and name in self.__property:
-            self.set_property(name, value)
-        # logger.info(self.__property)
-        verify_session(self)
 
     def set_property(self, name, value):
         assert value is True or value is False
         self.__property[name] = value
 
-        #XXX: Send signal to GraphPropertyNode
-        for node in self.all_nodes():
-            if isinstance(node, GraphPropertyNode):
-                node.update_property(name)
-
     def get_property(self, name):
         return self.__property.get(name, False)
+    
+    def has_property(self, name):
+        return name in self.__property
 
     def get_station(self, node):
         if not isinstance(node, sample_nodes.SampleNode):
@@ -137,6 +109,50 @@ class MyNodeGraph(NodeGraph):
             if self.get_property("station2"):
                 return "station2"
         return ""
+
+class MyNodeGraph(NodeGraph):
+
+    def __init__(self):
+        super(MyNodeGraph, self).__init__()
+
+        self.node_created.connect(self._node_created)
+        self.nodes_deleted.connect(self.dump)
+        self.port_connected.connect(self.dump)
+        self.port_disconnected.connect(self.dump)
+        self.property_changed.connect(self._property_changed)
+
+        self.__mymodel = MyModel()
+
+    def dump(self, *args, **kwargs):
+        logger.info("dump %s %s", args, kwargs)
+        verify_session(self)
+
+    def _node_created(self, node):
+        if isinstance(node, GraphPropertyNode):
+            for name in node.property_names:
+                if not self.__mymodel.has_property(name):
+                    self.__mymodel.set_property(name, True)
+            node.update_property()
+        verify_session(self)
+
+    def _property_changed(self, node, name, value):
+        if isinstance(node, GraphPropertyNode) and self.__mymodel.has_property(name):
+            self.__mymodel.set_property(name, value)
+        verify_session(self)
+
+    def set_property(self, name, value):
+        self.__mymodel.set_property(name, value)
+
+        #XXX: Send signal to GraphPropertyNode
+        for node in self.all_nodes():
+            if isinstance(node, GraphPropertyNode):
+                node.update_property(name)
+
+    def get_property(self, name):
+        return self.__mymodel.get_property(name)
+
+    def get_station(self, node):
+        return self.__mymodel.get_station(node)
 
 class GraphPropertyNode(BaseNode):
 
