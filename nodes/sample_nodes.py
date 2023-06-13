@@ -16,6 +16,22 @@ class SampleNode(BasicNode):
         super(SampleNode, self).__init__()
         self.add_text_input('station', '', tab='widgets')
 
+class DataInputNode(SampleNode):
+    """
+    A node class with 1 output.
+    """
+
+    # unique node identifier.
+    __identifier__ = 'nodes.sample'
+
+    # initial default node name.
+    NODE_NAME = 'DataInput'
+
+    def __init__(self):
+        super(DataInputNode, self).__init__()
+
+        self.add_data_output('out')
+
 class ObjectInputNode(SampleNode):
     """
     A node class with 1 output.
@@ -64,7 +80,7 @@ class ObjectOutputNode(SampleNode):
 
         self.add_object_input('in')
 
-class UniNode(SampleNode):
+class ObjectUniNode(SampleNode):
     """
     A node class with 1 input and 1 output.
     """
@@ -73,15 +89,32 @@ class UniNode(SampleNode):
     __identifier__ = 'nodes.sample'
 
     # initial default node name.
-    NODE_NAME = 'Uni'
+    NODE_NAME = 'ObjectUni'
 
     def __init__(self):
-        super(UniNode, self).__init__()
+        super(ObjectUniNode, self).__init__()
 
         self.add_object_input('in')
         self.add_object_output('out')
 
-class BiNode(SampleNode):
+class DataUniNode(SampleNode):
+    """
+    A node class with 1 input and 1 output.
+    """
+
+    # unique node identifier.
+    __identifier__ = 'nodes.sample'
+
+    # initial default node name.
+    NODE_NAME = 'DataUni'
+
+    def __init__(self):
+        super(DataUniNode, self).__init__()
+
+        self.add_data_input('in')
+        self.add_data_output('out')
+
+class ObjectBiNode(SampleNode):
     """
     A node class with 2 input and 2 output.
     """
@@ -90,10 +123,10 @@ class BiNode(SampleNode):
     __identifier__ = 'nodes.sample'
 
     # initial default node name.
-    NODE_NAME = 'Bi'
+    NODE_NAME = 'ObjectBi'
 
     def __init__(self):
-        super(BiNode, self).__init__()
+        super(ObjectBiNode, self).__init__()
 
         self.add_object_input('in1')
         self.add_object_input('in2')

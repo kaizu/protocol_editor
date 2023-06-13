@@ -123,12 +123,12 @@ class MyNodeGraph(NodeGraph):
         ):
             if self.get_property("station1"):
                 return "station1"
-        if isinstance(node, sample_nodes.UniNode):
+        if isinstance(node, sample_nodes.ObjectUniNode):
             if self.get_property("station2"):
                 return "station2"
             if self.get_property("station3"):
                 return "station3"
-        if isinstance(node, sample_nodes.BiNode):
+        if isinstance(node, sample_nodes.ObjectBiNode):
             if self.get_property("station4"):
                 return "station4"
             if self.get_property("station5"):
@@ -204,11 +204,13 @@ if __name__ == '__main__':
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
 
     graph.register_nodes([
-        sample_nodes.DataOutputNode,
+        sample_nodes.DataInputNode,
         sample_nodes.ObjectInputNode,
+        sample_nodes.DataOutputNode,
         sample_nodes.ObjectOutputNode,
-        sample_nodes.UniNode,
-        sample_nodes.BiNode,
+        sample_nodes.DataUniNode,
+        sample_nodes.ObjectUniNode,
+        sample_nodes.ObjectBiNode,
         sample_nodes.MeasurementNode,
         ConfigNode,
     ])
