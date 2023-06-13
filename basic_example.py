@@ -14,10 +14,11 @@ from NodeGraphQt import (
     # NodesPaletteWidget
 )
 
-from nodes import ofp_nodes, slab_nodes
+from nodes import sample_nodes
 
 from functools import partial
 
+# {'graph': {'layout_direction': 0, 'acyclic': True, 'pipe_collision': False, 'pipe_slicing': True, 'pipe_style': 1, 'accept_connection_types': {}, 'reject_connection_types': {}}, 'nodes': {'0x1a588ca4c10': {'type_': 'nodes.sample.InputNode', 'icon': None, 'name': 'Input', 'color': (13, 18, 23, 255), 'border_color': (74, 84, 85, 255), 'text_color': (255, 255, 255, 180), 'disabled': False, 'selected': False, 'visible': True, 'width': 160, 'height': 60, 'pos': [-5.023858959254142, 256.21680692196236], 'layout_direction': 0, 'port_deletion_allowed': False, 'subgraph_session': {}}, '0x1a588ca4e80': {'type_': 'nodes.sample.UniNode', 'icon': None, 'name': 'Uni', 'color': (13, 18, 23, 255), 'border_color': (74, 84, 85, 255), 'text_color': (255, 255, 255, 180), 'disabled': False, 'selected': False, 'visible': True, 'width': 160, 'height': 60, 'pos': [277.31701455082987, 335.59377847817814], 'layout_direction': 0, 'port_deletion_allowed': False, 'subgraph_session': {}}}, 'connections': [{'out': ['0x1a588ca4c10', 'out'], 'in': ['0x1a588ca4e80', 'in']}]}
 def verify_session(graph):
     print(graph.serialize_session())
 
@@ -50,18 +51,10 @@ if __name__ == '__main__':
     # set up context menu for the node graph.
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
 
-    # registered example nodes.
     graph.register_nodes([
-        ofp_nodes.SupplyContainerSingleNode,
-        ofp_nodes.SupplyContainerArrayNode,
-        ofp_nodes.SupplyLiquidNode,
-        ofp_nodes.DispenseLiquidNode,
-        ofp_nodes.DiscardNode,
-        ofp_nodes.SaveArtifactsNode,
-        ofp_nodes.MeasureAbsorbanceNode,
-        ofp_nodes.NumberInputNode,
-        slab_nodes.SLabNode,
-        slab_nodes.TransporterNode,
+        sample_nodes.InputNode,
+        sample_nodes.OutputNode,
+        sample_nodes.UniNode,
     ])
 
     # show the node graph widget.
