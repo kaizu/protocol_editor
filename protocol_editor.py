@@ -116,18 +116,19 @@ class MyNodeGraph(NodeGraph):
         super(MyNodeGraph, self).__init__()
 
         self.node_created.connect(self._node_created)
-        self.nodes_deleted.connect(self.dump)
-        self.port_connected.connect(self.dump)
-        self.port_disconnected.connect(self.dump)
+        self.nodes_deleted.connect(self._updated)
+        self.port_connected.connect(self._updated)
+        self.port_disconnected.connect(self._updated)
         self.property_changed.connect(self._property_changed)
 
         self.__mymodel = MyModel()
 
-    def dump(self, *args, **kwargs):
-        logger.info("dump %s %s", args, kwargs)
+    def _updated(self, *args, **kwargs):
+        logger.info("updated %s %s", args, kwargs)
         verify_session(self)
 
     def _node_created(self, node):
+        logger.info("node_created %s", node)
         if isinstance(node, GraphPropertyNode):
             for name in node.property_names:
                 if not self.__mymodel.has_property(name):
@@ -136,6 +137,7 @@ class MyNodeGraph(NodeGraph):
         verify_session(self)
 
     def _property_changed(self, node, name, value):
+        logger.info("property_changed %s %s %s", node, name, value)
         if isinstance(node, GraphPropertyNode) and self.__mymodel.has_property(name):
             self.set_property(name, value)
         verify_session(self)
