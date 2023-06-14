@@ -21,17 +21,17 @@ from NodeGraphQt import (
 )
 from NodeGraphQt.constants import PortTypeEnum
 
-from nodes import PortTraitsEnum, sample_nodes
+from nodes import PortTraitsEnum, SampleNode
 
 logger = getLogger(__name__)
 
 
 def verify_session(graph):
-    all_nodes = (node for node in graph.all_nodes() if isinstance(node, sample_nodes.SampleNode))
+    all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
     for node in all_nodes:
         is_valid = True
 
-        station = graph.get_station(node)
+        station = graph.allocate_station(node)
         node.set_property("station", station, push_undo=False)
 
         if any(node.get_port_traits(port.name()) in PortTraitsEnum.OBJECT for port in itertools.chain(node.input_ports(), node.output_ports())):
@@ -73,8 +73,10 @@ def counter(graph):
 
 class MyModel:
 
-    def __init__(self):
+    def __init__(self, doc):
         self.__property = dict()
+
+        self.__stations = doc.get('station', {})
 
     def set_property(self, name, value):
         assert value is True or value is False
@@ -86,33 +88,34 @@ class MyModel:
     def has_property(self, name):
         return name in self.__property
 
-    def get_station(self, node):
-        if not isinstance(node, sample_nodes.SampleNode):
+    def list_stations(self):
+        return list(self.__stations.keys())
+    
+    def allocate_station(self, node):
+        if not isinstance(node, SampleNode):
             return ""
-        elif (
-            isinstance(node, sample_nodes.ObjectInputNode)
-            or isinstance(node, sample_nodes.ObjectOutputNode)
-        ):
-            if self.get_property("station1"):
-                return "station1"
-        elif isinstance(node, sample_nodes.ObjectUniNode):
-            if self.get_property("station2"):
-                return "station2"
-            if self.get_property("station3"):
-                return "station3"
-        elif isinstance(node, sample_nodes.ObjectBiNode):
-            if self.get_property("station4"):
-                return "station4"
-            if self.get_property("station5"):
-                return "station5"
-        elif isinstance(node, sample_nodes.MeasurementNode):
-            if self.get_property("station2"):
-                return "station2"
+        node_name = node.NODE_NAME
+        for key, value in self.__stations.items():
+            if node_name in value and self.get_property(key):
+                return key
         return ""
+
+def declare_node(name, doc):
+    def __init__(self):
+        SampleNode.__init__(self)
+        self.__doc = doc
+        for port_name, traits_str in doc.get('input', {}).items():
+            traits = eval(traits_str, {}, {t.name: t for t in PortTraitsEnum})
+            self._add_input(port_name, traits)
+        for port_name, traits_str in doc.get('output', {}).items():
+            traits = eval(traits_str, {}, {t.name: t for t in PortTraitsEnum})
+            self._add_output(port_name, traits)
+    cls = type(name, (SampleNode, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__})
+    return cls
 
 class MyNodeGraph(NodeGraph):
 
-    def __init__(self):
+    def __init__(self, doc=None):
         super(MyNodeGraph, self).__init__()
 
         self.node_created.connect(self._node_created)
@@ -121,7 +124,15 @@ class MyNodeGraph(NodeGraph):
         self.port_disconnected.connect(self._updated)
         self.property_changed.connect(self._property_changed)
 
-        self.__mymodel = MyModel()
+        self.__mymodel = MyModel(doc.get('model', {}))
+
+        self.register_nodes([
+            declare_node(key, value)
+            for key, value in doc.get('node', {}).items()
+        ])
+
+        for station in self.__mymodel.list_stations():
+            self.set_property(station, True)
 
     def _updated(self, *args, **kwargs):
         logger.info("updated %s %s", args, kwargs)
@@ -130,9 +141,9 @@ class MyNodeGraph(NodeGraph):
     def _node_created(self, node):
         logger.info("node_created %s", node)
         if isinstance(node, GraphPropertyNode):
-            for name in node.property_names:
-                if not self.__mymodel.has_property(name):
-                    self.set_property(name, True)
+            # for name in node.property_names:
+            #     if not self.__mymodel.has_property(name):
+            #         self.set_property(name, True)
             node.update_property()
         verify_session(self)
 
@@ -153,8 +164,8 @@ class MyNodeGraph(NodeGraph):
     def get_property(self, name):
         return self.__mymodel.get_property(name)
 
-    def get_station(self, node):
-        return self.__mymodel.get_station(node)
+    def allocate_station(self, node):
+        return self.__mymodel.allocate_station(node)
 
 class GraphPropertyNode(BaseNode):
 
@@ -195,6 +206,8 @@ class ConfigNode(GraphPropertyNode):
 
 
 if __name__ == '__main__':
+    import yaml 
+
     from logging import StreamHandler, Formatter, INFO
     handler = StreamHandler()
     handler.setLevel(INFO)
@@ -215,21 +228,16 @@ if __name__ == '__main__':
     mypalette.setColor(QPalette.Text, QColor(192, 192, 192))
     app.setPalette(mypalette)
 
+    with open('./config.yaml') as f:
+        doc = yaml.safe_load(f)
+
     # create graph controller.
-    graph = MyNodeGraph()
+    graph = MyNodeGraph(doc)
 
     # set up context menu for the node graph.
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
 
     graph.register_nodes([
-        sample_nodes.DataInputNode,
-        sample_nodes.ObjectInputNode,
-        sample_nodes.DataOutputNode,
-        sample_nodes.ObjectOutputNode,
-        sample_nodes.DataUniNode,
-        sample_nodes.ObjectUniNode,
-        sample_nodes.ObjectBiNode,
-        sample_nodes.MeasurementNode,
         ConfigNode,
     ])
 

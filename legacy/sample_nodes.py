@@ -1,20 +1,5 @@
-from nodes import BasicNode
+from nodes import SampleNode
 
-
-class SampleNode(BasicNode):
-    """
-    A node base class.
-    """
-
-    # unique node identifier.
-    __identifier__ = 'nodes.sample'
-
-    # initial default node name.
-    NODE_NAME = 'Sample'
-
-    def __init__(self):
-        super(SampleNode, self).__init__()
-        self.add_text_input('station', '', tab='widgets')
 
 class DataInputNode(SampleNode):
     """

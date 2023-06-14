@@ -61,21 +61,50 @@ class BasicNode(BaseNode):
 
         self.__port_traits = dict()
 
-    def add_data_input(self, name, multi_input=False):
-        self.add_input(name, color=(180, 80, 0), multi_input=multi_input)
-        self.__port_traits[name] = PortTraitsEnum.DATA
-
-    def add_data_output(self, name, multi_output=True):
-        self.add_output(name, color=(180, 80, 0), multi_output=multi_output)
-        self.__port_traits[name] = PortTraitsEnum.DATA
-
-    def add_object_input(self, name, multi_input=False):
-        self.add_input(name, multi_input=multi_input, painter_func=draw_square_port)
-        self.__port_traits[name] = PortTraitsEnum.OBJECT
-
-    def add_object_output(self, name, multi_output=False):
-        self.add_output(name, multi_output=multi_output, painter_func=draw_square_port)
-        self.__port_traits[name] = PortTraitsEnum.OBJECT
-
     def get_port_traits(self, name):
         return self.__port_traits[name]
+    
+    def _add_input(self, name, traits, multi=False):
+        if traits in PortTraitsEnum.OBJECT:
+            self.add_input(name, multi_input=multi, painter_func=draw_square_port)
+        elif traits in PortTraitsEnum.DATA:
+            self.add_input(name, color=(180, 80, 0), multi_input=multi)
+        else:
+            assert False, 'Never reach here {s}'.format(traits)
+        self.__port_traits[name] = traits
+
+    def _add_output(self, name, traits, multi=False):
+        if traits in PortTraitsEnum.OBJECT:
+            self.add_output(name, multi_output=multi, painter_func=draw_square_port)
+        elif traits in PortTraitsEnum.DATA:
+            self.add_output(name, color=(180, 80, 0), multi_output=multi)
+        else:
+            assert False, 'Never reach here {s}'.format(traits)
+        self.__port_traits[name] = traits
+
+    def add_data_input(self, name, multi_input=False):
+        self._add_input(name, PortTraitsEnum.DATA, multi_input)
+
+    def add_data_output(self, name, multi_output=True):
+        self._add_output(name, PortTraitsEnum.DATA, multi_output)
+
+    def add_object_input(self, name, multi_input=False):
+        self._add_input(name, PortTraitsEnum.OBJECT, multi_input)
+
+    def add_object_output(self, name, multi_output=False):
+        self._add_output(name, PortTraitsEnum.OBJECT, multi_output)
+
+class SampleNode(BasicNode):
+    """
+    A node base class.
+    """
+
+    # unique node identifier.
+    __identifier__ = 'nodes.sample'
+
+    # initial default node name.
+    NODE_NAME = 'Sample'
+
+    def __init__(self):
+        super(SampleNode, self).__init__()
+        self.add_text_input('station', '', tab='widgets')
