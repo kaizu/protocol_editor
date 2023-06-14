@@ -61,7 +61,7 @@ class BasicNode(BaseNode):
     def __init__(self, qgraphics_item=None):
         super(BasicNode, self).__init__(qgraphics_item)
 
-        self.__port_traits = dict()
+        self.__port_traits = {}
 
     def get_port_traits(self, name):
         return PortTraitsEnum(self.__port_traits[name])

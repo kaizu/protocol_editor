@@ -7,6 +7,7 @@ import copy
 import itertools
 import functools
 import signal
+import datetime
 
 from Qt import QtCore, QtWidgets
 from Qt.QtCore import QTimer
@@ -24,6 +25,27 @@ from NodeGraphQt.constants import PortTypeEnum
 from nodes import PortTraitsEnum, SampleNode, NodeStatusEnum
 
 logger = getLogger(__name__)
+
+class Simulator:
+
+    def __init__(self):
+        self.__scheduler = {}
+
+    def run(self, node):
+        logger.info('run %s', node)
+        self.__scheduler[node.name] = datetime.datetime.now()
+        return NodeStatusEnum.RUNNING
+    
+    def get_status(self, node):
+        logger.info('get_status %s', node)
+        if node.name not in self.__scheduler:
+            return NodeStatusEnum.ERROR
+        start = self.__scheduler[node.name]
+        now = datetime.datetime.now()
+        if (now - start).total_seconds() > 20:
+            del self.__scheduler[node.name]
+            return NodeStatusEnum.DONE
+        return NodeStatusEnum.RUNNING
 
 def run_session(graph):
     graph._run()
@@ -71,15 +93,18 @@ def verify_session(graph):
 
     # logger.info(graph.serialize_session())
 
-def counter(graph):
-    all_nodes = graph.all_nodes()
+def counter(graph, sim):
+    all_nodes = [
+        node for node in graph.all_nodes()
+        if isinstance(node, SampleNode)
+    ]
+    running = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.RUNNING.value]
+    waiting = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.WAITING.value]
 
-    for node in all_nodes:
-        if not isinstance(node, SampleNode):
-            continue
-        status = node.get_property('status')
-        if status is not NodeStatusEnum.WAITING.value:
-            continue
+    for node in running:
+        node.set_property('status', sim.get_status(node).value)
+
+    for node in waiting:
         runnable = True
         for input_port in node.input_ports():
             for another_port in input_port.connected_ports():
@@ -88,12 +113,12 @@ def counter(graph):
                     runnable = False
                     break
         if runnable:
-            node.set_property('status', NodeStatusEnum.RUNNING)
+            node.set_property('status', sim.run(node).value)
 
 class MyModel:
 
     def __init__(self, doc):
-        self.__property = dict()
+        self.__property = {}
 
         self.__stations = doc.get('station', {})
 
@@ -113,18 +138,19 @@ class MyModel:
     def allocate_station(self, node):
         if not isinstance(node, SampleNode):
             return ""
-        node_name = node.NODE_NAME
+        node_name = node.__class__.__name__
         for key, value in self.__stations.items():
             if node_name in value and self.get_property(key):
                 return key
+        logger.info('allocate_station %s', node_name)
         return ""
 
 def declare_node(name, doc):
     def __init__(self):
         SampleNode.__init__(self)
         self.__doc = doc
-        self.__io_mapping = dict()
-        input_traits = dict()
+        self.__io_mapping = {}
+        input_traits = {}
         params = {t.name: t for t in PortTraitsEnum}
         for port_name, traits_str in doc.get('input', {}).items():
             traits = eval(traits_str, {}, params)
@@ -213,7 +239,7 @@ class MyNodeGraph(NodeGraph):
         return self.__mymodel.allocate_station(node)
     
     def _run(self):
-        session = dict()
+        session = {}
 
         for node in self.all_nodes():
             logger.info('node {}'.format(node))
@@ -328,9 +354,11 @@ if __name__ == '__main__':
     # # wire function to "node_double_clicked" signal.
     # graph.node_double_clicked.connect(display_properties_bin)
     
+    sim = Simulator()
+
     t1 = QTimer()
     t1.setInterval(5 * 1000)  # msec
-    t1.timeout.connect(functools.partial(counter, graph))
+    t1.timeout.connect(functools.partial(counter, graph, sim))
     t1.start()
 
     app.exec_()
