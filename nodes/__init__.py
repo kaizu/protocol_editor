@@ -100,6 +100,8 @@ class NodeStatusEnum(IntEnum):
     READY = auto()
     ERROR = auto()
     WAITING = auto()
+    RUNNING = auto()
+    DONE = auto()
     
 class SampleNode(BasicNode):
     """
@@ -123,9 +125,13 @@ class SampleNode(BasicNode):
         if value == NodeStatusEnum.READY.value:
             self.set_color(13, 18, 23)
         elif value == NodeStatusEnum.ERROR.value:
-            self.set_color(180, 18, 23)
+            self.set_color(63, 18, 23)
         elif value == NodeStatusEnum.WAITING.value:
             self.set_color(63, 68, 73)
+        elif value == NodeStatusEnum.RUNNING.value:
+            self.set_color(13, 18, 73)
+        elif value == NodeStatusEnum.DONE.value:
+            self.set_color(13, 68, 23)
         else:
             assert False, "Never reach here {}".format(value)
 

@@ -158,6 +158,13 @@
   },
   {
     "type":"command",
+    "label":"Reset",
+    "file":"../protocol_editor/protocol_editor.py",
+    "function_name":"reset_session",
+    "shortcut":""
+  },
+  {
+    "type":"command",
     "label":"Verify",
     "file":"../protocol_editor/protocol_editor.py",
     "function_name":"verify_session",

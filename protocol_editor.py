@@ -28,6 +28,12 @@ logger = getLogger(__name__)
 def run_session(graph):
     graph._run()
 
+def reset_session(graph):
+    all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
+    for node in all_nodes:
+        if node.get_property('status') in (NodeStatusEnum.DONE.value, NodeStatusEnum.WAITING.value):
+            node.set_property('status', NodeStatusEnum.READY.value)
+
 def verify_session(graph):
     all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
     for node in all_nodes:
@@ -67,12 +73,22 @@ def verify_session(graph):
 
 def counter(graph):
     all_nodes = graph.all_nodes()
-    # if len(all_nodes) > 0:
-    #     for node in all_nodes:
-    #         rgb = node.color()
-    #         if rgb == (13, 18, 23):
-    #             node.set_color(255, 0, 0)
-    #         print(rgb)
+
+    for node in all_nodes:
+        if not isinstance(node, SampleNode):
+            continue
+        status = node.get_property('status')
+        if status is not NodeStatusEnum.WAITING.value:
+            continue
+        runnable = True
+        for input_port in node.input_ports():
+            for another_port in input_port.connected_ports():
+                another = another_port.node()
+                if another.get_property('status') is not NodeStatusEnum.DONE.value:
+                    runnable = False
+                    break
+        if runnable:
+            node.set_property('status', NodeStatusEnum.RUNNING)
 
 class MyModel:
 
@@ -312,9 +328,9 @@ if __name__ == '__main__':
     # # wire function to "node_double_clicked" signal.
     # graph.node_double_clicked.connect(display_properties_bin)
     
-    # t1 = QTimer()
-    # t1.setInterval(5 * 1000)  # msec
-    # t1.timeout.connect(functools.partial(counter, graph))
-    # t1.start()
+    t1 = QTimer()
+    t1.setInterval(5 * 1000)  # msec
+    t1.timeout.connect(functools.partial(counter, graph))
+    t1.start()
 
     app.exec_()
