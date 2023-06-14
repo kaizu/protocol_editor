@@ -21,10 +21,9 @@ from NodeGraphQt import (
 )
 from NodeGraphQt.constants import PortTypeEnum
 
-from nodes import PortTraitsEnum, SampleNode
+from nodes import PortTraitsEnum, SampleNode, NodeStatusEnum
 
 logger = getLogger(__name__)
-
 
 def verify_session(graph):
     all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
@@ -52,13 +51,11 @@ def verify_session(graph):
                     (port.type_() == PortTypeEnum.IN.value and another_traits not in port_traits)
                     or (port.type_() == PortTypeEnum.OUT.value and port_traits not in another_traits)
                 ):
+                    logger.info(port.type_(), port_traits, another_traits)
                     is_valid = False
                     break
 
-        if is_valid:
-            node.set_color(13, 18, 23)
-        else:
-            node.set_color(180, 18, 23)
+        node.set_property('status', NodeStatusEnum.READY if is_valid else NodeStatusEnum.ERROR, push_undo=False)
 
     # logger.info(graph.serialize_session())
 
@@ -145,18 +142,21 @@ class MyNodeGraph(NodeGraph):
             #     if not self.__mymodel.has_property(name):
             #         self.set_property(name, True)
             node.update_property()
+        elif isinstance(node, SampleNode):
+            node.update_color()
         verify_session(self)
 
     def _property_changed(self, node, name, value):
         logger.info("property_changed %s %s %s", node, name, value)
         if isinstance(node, GraphPropertyNode) and self.__mymodel.has_property(name):
             self.set_property(name, value)
-        verify_session(self)
+            verify_session(self)
+        elif isinstance(node, SampleNode) and name == "status":
+            node.update_color()
 
     def set_property(self, name, value):
         self.__mymodel.set_property(name, value)
 
-        #XXX: Send signal to GraphPropertyNode
         for node in self.all_nodes():
             if isinstance(node, GraphPropertyNode):
                 node.update_property(name)

@@ -1,4 +1,4 @@
-from enum import IntFlag, auto
+from enum import IntFlag, IntEnum, auto
 
 from Qt import QtGui, QtCore
 from NodeGraphQt import BaseNode
@@ -48,6 +48,7 @@ def draw_square_port(painter, rect, info):
 class PortTraitsEnum(IntFlag):
     DATA = auto()
     OBJECT = auto()
+    TUBE = auto()
 
 class BasicNode(BaseNode):
     """
@@ -79,7 +80,7 @@ class BasicNode(BaseNode):
         elif traits in PortTraitsEnum.DATA:
             self.add_output(name, color=(180, 80, 0), multi_output=multi)
         else:
-            assert False, 'Never reach here {s}'.format(traits)
+            assert False, 'Never reach here {:s}'.format(traits)
         self.__port_traits[name] = traits
 
     def add_data_input(self, name, multi_input=False):
@@ -94,6 +95,10 @@ class BasicNode(BaseNode):
     def add_object_output(self, name, multi_output=False):
         self._add_output(name, PortTraitsEnum.OBJECT, multi_output)
 
+class NodeStatusEnum(IntEnum):
+    READY = auto()
+    ERROR = auto()
+    
 class SampleNode(BasicNode):
     """
     A node base class.
@@ -107,4 +112,17 @@ class SampleNode(BasicNode):
 
     def __init__(self):
         super(SampleNode, self).__init__()
-        self.add_text_input('station', '', tab='widgets')
+        self.create_property('status', NodeStatusEnum.ERROR)
+        self.add_text_input('station', tab='widgets')
+        self.add_text_input('_status', tab='widgets')
+
+    def update_color(self):
+        value = self.get_property('status')
+        if value is NodeStatusEnum.READY:
+            self.set_color(13, 18, 23)
+        elif value is NodeStatusEnum.ERROR:
+            self.set_color(180, 18, 23)
+        else:
+            assert False, "Never reach here {:s}".format(value)
+
+        self.set_property('_status', value.name)

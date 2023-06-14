@@ -2,25 +2,20 @@ node:
   DataInputNode:
     output:
       out: DATA
-
   DataOutputNode:
     input:
       in: DATA
-
   ObjectInputNode:
     output:
       out: OBJECT
-
   ObjectOutputNode:
     input:
       in: OBJECT
-
   ObjectUniNode:
     input:
       in: OBJECT
     output:
       out: OBJECT
-
   ObjectBiNode:
     input:
       in1: OBJECT
@@ -28,21 +23,31 @@ node:
     output:
       out1: OBJECT
       out2: OBJECT
-
   MeasureNode:
     input:
       in: OBJECT
     output:
       out: OBJECT
       value: DATA
+  TubeInputNode:
+    output:
+      out: TUBE & OBJECT
+  TubeMeasureNode:
+    input:
+      in: TUBE & OBJECT
+    output:
+      out: TUBE & OBJECT
+      value: DATA
 model:
   station:
     station1:
       - ObjectInputNode
       - ObjectOutputNode
+      - TubeInputNode
     station2:
       - ObjectUniNode
       - MeasureNode
+      - TubeMeasureNode
     station3:
       - ObjectUniNode
     station4:
