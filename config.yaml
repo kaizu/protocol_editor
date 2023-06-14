@@ -31,12 +31,12 @@ node:
       value: DATA
   TubeInputNode:
     output:
-      out: TUBE & OBJECT
+      out: TUBE
   TubeMeasureNode:
     input:
-      in: TUBE & OBJECT
+      in: TUBE
     output:
-      out: TUBE & OBJECT
+      out: TUBE
       value: DATA
 model:
   station:

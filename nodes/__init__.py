@@ -47,8 +47,9 @@ def draw_square_port(painter, rect, info):
 
 class PortTraitsEnum(IntFlag):
     DATA = auto()
-    OBJECT = auto()
     TUBE = auto()
+    PLATE = auto()
+    OBJECT = TUBE | PLATE
 
 class BasicNode(BaseNode):
     """
@@ -63,7 +64,7 @@ class BasicNode(BaseNode):
         self.__port_traits = dict()
 
     def get_port_traits(self, name):
-        return self.__port_traits[name]
+        return PortTraitsEnum(self.__port_traits[name])
     
     def _add_input(self, name, traits, multi=False):
         if traits in PortTraitsEnum.OBJECT:
@@ -71,8 +72,8 @@ class BasicNode(BaseNode):
         elif traits in PortTraitsEnum.DATA:
             self.add_input(name, color=(180, 80, 0), multi_input=multi)
         else:
-            assert False, 'Never reach here {s}'.format(traits)
-        self.__port_traits[name] = traits
+            assert False, 'Never reach here {}'.format(traits)
+        self.__port_traits[name] = traits.value
 
     def _add_output(self, name, traits, multi=False):
         if traits in PortTraitsEnum.OBJECT:
@@ -80,8 +81,8 @@ class BasicNode(BaseNode):
         elif traits in PortTraitsEnum.DATA:
             self.add_output(name, color=(180, 80, 0), multi_output=multi)
         else:
-            assert False, 'Never reach here {:s}'.format(traits)
-        self.__port_traits[name] = traits
+            assert False, 'Never reach here {}'.format(traits)
+        self.__port_traits[name] = traits.value
 
     def add_data_input(self, name, multi_input=False):
         self._add_input(name, PortTraitsEnum.DATA, multi_input)
@@ -98,6 +99,7 @@ class BasicNode(BaseNode):
 class NodeStatusEnum(IntEnum):
     READY = auto()
     ERROR = auto()
+    WAITING = auto()
     
 class SampleNode(BasicNode):
     """
@@ -118,11 +120,13 @@ class SampleNode(BasicNode):
 
     def update_color(self):
         value = self.get_property('status')
-        if value is NodeStatusEnum.READY:
+        if value == NodeStatusEnum.READY.value:
             self.set_color(13, 18, 23)
-        elif value is NodeStatusEnum.ERROR:
+        elif value == NodeStatusEnum.ERROR.value:
             self.set_color(180, 18, 23)
+        elif value == NodeStatusEnum.WAITING.value:
+            self.set_color(63, 68, 73)
         else:
-            assert False, "Never reach here {:s}".format(value)
+            assert False, "Never reach here {}".format(value)
 
-        self.set_property('_status', value.name)
+        self.set_property('_status', NodeStatusEnum(value).name)

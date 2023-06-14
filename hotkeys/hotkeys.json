@@ -151,6 +151,13 @@
   },
   {
     "type":"command",
+    "label":"Run",
+    "file":"../protocol_editor/protocol_editor.py",
+    "function_name":"run_session",
+    "shortcut":""
+  },
+  {
+    "type":"command",
     "label":"Verify",
     "file":"../protocol_editor/protocol_editor.py",
     "function_name":"verify_session",

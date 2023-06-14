@@ -25,6 +25,9 @@ from nodes import PortTraitsEnum, SampleNode, NodeStatusEnum
 
 logger = getLogger(__name__)
 
+def run_session(graph):
+    graph._run()
+
 def verify_session(graph):
     all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
     for node in all_nodes:
@@ -51,11 +54,14 @@ def verify_session(graph):
                     (port.type_() == PortTypeEnum.IN.value and another_traits not in port_traits)
                     or (port.type_() == PortTypeEnum.OUT.value and port_traits not in another_traits)
                 ):
-                    logger.info(port.type_(), port_traits, another_traits)
+                    logger.info("%s %s %s", port.type_(), port_traits, another_traits)
                     is_valid = False
                     break
 
-        node.set_property('status', NodeStatusEnum.READY if is_valid else NodeStatusEnum.ERROR, push_undo=False)
+        if not is_valid:
+            node.set_property('status', NodeStatusEnum.ERROR.value, push_undo=False)
+        elif node.get_property('status') == NodeStatusEnum.ERROR.value:
+            node.set_property('status', NodeStatusEnum.READY.value, push_undo=False)
 
     # logger.info(graph.serialize_session())
 
@@ -166,6 +172,29 @@ class MyNodeGraph(NodeGraph):
 
     def allocate_station(self, node):
         return self.__mymodel.allocate_station(node)
+    
+    def _run(self):
+        session = dict()
+
+        for node in self.all_nodes():
+            logger.info('node {}'.format(node))
+            if not isinstance(node, SampleNode):
+                logger.info('This is not an instance of SampleNode.')
+                continue
+            if node.get_property('status') != NodeStatusEnum.READY.value:
+                logger.info('Status is not READY. {}'.format(node.get_property('status')))
+                continue
+            
+            node.set_property('status', NodeStatusEnum.WAITING.value, push_undo=False)
+
+            dependencies = []
+            for port in node.input_ports():
+                assert len(port.connected_ports()) <= 1
+                for another_port in port.connected_ports():
+                    dependencies.append(another_port.node().NODE_NAME)
+            session[node.NODE_NAME] = dependencies
+
+        logger.info(session)
 
 class GraphPropertyNode(BaseNode):
 
@@ -246,7 +275,7 @@ if __name__ == '__main__':
     graph_widget.resize(1100, 800)
     graph_widget.show()
     
-    graph.create_node("nodes.config.ConfigNode")
+    # graph.create_node("nodes.config.ConfigNode")
     
     # # create a node properties bin widget.
     # properties_bin = PropertiesBinWidget(node_graph=graph)
