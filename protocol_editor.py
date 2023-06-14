@@ -28,23 +28,49 @@ logger = getLogger(__name__)
 
 class Simulator:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.__scheduler = {}
+        self.__results = {}
 
-    def run(self, node):
+    def execute(self, node: SampleNode) -> NodeStatusEnum:
+        for output in node.output_ports():
+            traits = node.get_port_traits(output.name())
+            if output.name() in node.io_mapping():
+                value = self.__results[(node.name(), node.io_mapping()[output.name()])]
+            else:
+                if traits in PortTraitsEnum.DATA:
+                    value = 100
+                elif traits in PortTraitsEnum.OBJECT:
+                    value = None
+                else:
+                    assert False, "Never reach here {}".format(traits)
+            self.__results[(node.name(), output.name())] = value
+
+        logger.info("execute %s", self.__results)
+        return NodeStatusEnum.DONE
+
+    def run(self, node: SampleNode) -> NodeStatusEnum:
         logger.info('run %s', node)
         self.__scheduler[node.name] = datetime.datetime.now()
+
+        for input in node.input_ports():
+            key = None
+            for connected in input.connected_ports():
+                key = (connected.node().name(), connected.name())
+                break
+            assert key in self.__results, key
+            self.__results[(node.name(), input.name())] = self.__results[key]
         return NodeStatusEnum.RUNNING
     
-    def get_status(self, node):
+    def get_status(self, node: SampleNode) -> NodeStatusEnum:
         logger.info('get_status %s', node)
         if node.name not in self.__scheduler:
             return NodeStatusEnum.ERROR
         start = self.__scheduler[node.name]
         now = datetime.datetime.now()
-        if (now - start).total_seconds() > 20:
+        if (now - start).total_seconds() > 10:
             del self.__scheduler[node.name]
-            return NodeStatusEnum.DONE
+            return self.execute(node)
         return NodeStatusEnum.RUNNING
 
 def run_session(graph):
@@ -138,11 +164,11 @@ class MyModel:
     def allocate_station(self, node):
         if not isinstance(node, SampleNode):
             return ""
-        node_name = node.__class__.__name__
+        class_name = node.__class__.__name__
         for key, value in self.__stations.items():
-            if node_name in value and self.get_property(key):
+            if class_name in value and self.get_property(key):
                 return key
-        logger.info('allocate_station %s', node_name)
+        logger.info('allocate_station %s', class_name)
         return ""
 
 def declare_node(name, doc):
