@@ -132,8 +132,11 @@ def declare_node(name, doc):
                 assert isinstance(another, SampleNode)
                 return another.get_port_traits(connected.name())
         return SampleNode.get_port_traits(self, name)
+    
+    def io_mapping(self):
+        return self.__io_mapping.copy()
 
-    cls = type(name, (SampleNode, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__, 'get_port_traits': get_port_traits})
+    cls = type(name, (SampleNode, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__, 'get_port_traits': get_port_traits, 'io_mapping': io_mapping})
     return cls
 
 class MyNodeGraph(NodeGraph):
