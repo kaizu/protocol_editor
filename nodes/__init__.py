@@ -1,3 +1,7 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+from logging import getLogger
+
 from enum import IntFlag, IntEnum, auto
 
 from Qt import QtGui, QtCore
