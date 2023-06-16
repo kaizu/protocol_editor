@@ -120,10 +120,32 @@ class SampleNode(BasicNode):
 
     def __init__(self):
         super(SampleNode, self).__init__()
+
+        self.__io_mapping = {}
+
         self.create_property('status', NodeStatusEnum.ERROR)
         self.add_text_input('station', tab='widgets')
         self.add_text_input('_status', tab='widgets')
 
+    def set_io_mapping(self, output_port_name, input_port_name):
+        assert output_port_name in self.outputs(), output_port_name
+        assert input_port_name in self.inputs(), input_port_name
+        self.__io_mapping[output_port_name] = input_port_name
+    
+    def io_mapping(self):
+        return self.__io_mapping.copy()
+
+    def get_port_traits(self, name):
+        #XXX: This impl would be too slow. Use cache
+        if name in self.__io_mapping:
+            input = self.get_input(self.__io_mapping[name])
+            assert len(input.connected_ports()) <= 1
+            for connected in input.connected_ports():
+                another = connected.node()
+                assert isinstance(another, SampleNode)
+                return another.get_port_traits(connected.name())
+        return super(SampleNode, self).get_port_traits(name)
+    
     def update_color(self):
         value = self.get_property('status')
         if value == NodeStatusEnum.READY.value:

@@ -134,7 +134,6 @@ def declare_node(name, doc):
     def __init__(self):
         SampleNode.__init__(self)
         self.__doc = doc
-        self.__io_mapping = {}
         input_traits = {}
         params = {t.name: t for t in PortTraitsEnum}
         for port_name, traits_str in doc.get('input', {}).items():
@@ -144,26 +143,13 @@ def declare_node(name, doc):
         for port_name, traits_str in doc.get('output', {}).items():
             if traits_str in input_traits:
                 traits = input_traits[traits_str]
-                self.__io_mapping[port_name] = traits_str
+                self._add_output(port_name, traits)
+                self.set_io_mapping(port_name, traits_str)
             else:
                 traits = eval(traits_str, {}, params)
-            self._add_output(port_name, traits)
+                self._add_output(port_name, traits)
 
-    def get_port_traits(self, name):
-        #XXX: This impl would be too slow. Use cache
-        if name in self.__io_mapping:
-            input = self.get_input(self.__io_mapping[name])
-            assert len(input.connected_ports()) <= 1
-            for connected in input.connected_ports():
-                another = connected.node()
-                assert isinstance(another, SampleNode)
-                return another.get_port_traits(connected.name())
-        return SampleNode.get_port_traits(self, name)
-    
-    def io_mapping(self):
-        return self.__io_mapping.copy()
-
-    cls = type(name, (SampleNode, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__, 'get_port_traits': get_port_traits, 'io_mapping': io_mapping})
+    cls = type(name, (SampleNode, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__})
     return cls
 
 class MyNodeGraph(NodeGraph):
