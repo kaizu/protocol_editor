@@ -5,6 +5,11 @@ node:
   DataOutputNode:
     input:
       in1: DATA
+  DataUniNode:
+    input:
+      in1: DATA
+    output:
+      out1: in1
   ObjectInputNode:
     output:
       out1: OBJECT
@@ -41,6 +46,19 @@ node:
     output:
       out1: in1
       value1: DATA
+  DataSplitNode:
+    input:
+      in1: DATA
+    output:
+      out1: in1
+      out2: in1
+  ObjectSwitchNode:
+    input:
+      in1: OBJECT
+      cond: DATA
+    output:
+      out1: in1
+      out2: in1
 model:
   station:
     station1:
@@ -48,6 +66,7 @@ model:
       - ObjectOutputNode
       - TubeInputNode
       - TubeOutputNode
+      - ObjectSwitchNode
     station2:
       - ObjectUniNode
       - MeasureNode

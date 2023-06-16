@@ -72,7 +72,8 @@ def verify_session(graph):
 
     # logger.info(graph.serialize_session())
 
-def counter(graph, sim):
+def counter(graph):
+    sim = graph.simulator
     all_nodes = [
         node for node in graph.all_nodes()
         if isinstance(node, SampleNode)
@@ -81,14 +82,19 @@ def counter(graph, sim):
     waiting = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.WAITING.value]
 
     for node in running:
-        node.set_property('status', sim.get_status(node).value)
+        new_status = sim.get_status(node)
+        logger.info("counter %s", new_status)
+        node.set_property('status', new_status.value)
 
     for node in waiting:
         runnable = True
         for input_port in node.input_ports():
             for another_port in input_port.connected_ports():
                 another = another_port.node()
-                if another.get_property('status') is not NodeStatusEnum.DONE.value:
+                # if another.get_property('status') is not NodeStatusEnum.DONE.value:
+                #     runnable = False
+                #     break
+                if not sim.has_token((another.name(), another_port.name())):
                     runnable = False
                     break
         if runnable:
@@ -162,7 +168,7 @@ def declare_node(name, doc):
 
 class MyNodeGraph(NodeGraph):
 
-    def __init__(self, doc=None):
+    def __init__(self, simulator=None, doc=None):
         super(MyNodeGraph, self).__init__()
 
         self.node_created.connect(self._node_created)
@@ -171,6 +177,7 @@ class MyNodeGraph(NodeGraph):
         self.port_disconnected.connect(self._updated)
         self.property_changed.connect(self._property_changed)
 
+        self.simulator = simulator or Simulator()
         self.__mymodel = MyModel(doc.get('model', {}))
 
         self.register_nodes([
@@ -203,6 +210,8 @@ class MyNodeGraph(NodeGraph):
             verify_session(self)
         elif isinstance(node, SampleNode) and name == "status":
             node.update_color()
+            if value != NodeStatusEnum.DONE.value:
+                self.simulator.reset_token(node)
 
     def set_property(self, name, value):
         self.__mymodel.set_property(name, value)
@@ -308,7 +317,7 @@ if __name__ == '__main__':
         doc = yaml.safe_load(f)
 
     # create graph controller.
-    graph = MyNodeGraph(doc)
+    graph = MyNodeGraph(doc=doc)
 
     # set up context menu for the node graph.
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
@@ -336,11 +345,9 @@ if __name__ == '__main__':
     # # wire function to "node_double_clicked" signal.
     # graph.node_double_clicked.connect(display_properties_bin)
     
-    sim = Simulator()
-
     t1 = QTimer()
     t1.setInterval(5 * 1000)  # msec
-    t1.timeout.connect(functools.partial(counter, graph, sim))
+    t1.timeout.connect(functools.partial(counter, graph))
     t1.start()
 
     app.exec_()
