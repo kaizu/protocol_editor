@@ -20,7 +20,7 @@ from NodeGraphQt import (
 )
 from NodeGraphQt.constants import PortTypeEnum
 
-from nodes import PortTraitsEnum, SampleNode, NodeStatusEnum
+from nodes import PortTraitsEnum, NodeStatusEnum, SampleNode, ObjectNode, SwitchNode
 from simulator import Simulator
 
 logger = getLogger(__name__)
@@ -40,10 +40,9 @@ def verify_session(graph):
     for node in all_nodes:
         is_valid = True
 
-        station = graph.allocate_station(node)
-        node.set_property("station", station, push_undo=False)
-
-        if any(node.get_port_traits(port.name()) in PortTraitsEnum.OBJECT for port in itertools.chain(node.input_ports(), node.output_ports())):
+        if isinstance(node, ObjectNode):
+            station = graph.allocate_station(node)
+            node.set_property("station", station, push_undo=False)
             is_valid = is_valid and station != ""
 
         for port in itertools.chain(
@@ -131,8 +130,26 @@ class MyModel:
         return ""
 
 def declare_node(name, doc):
+    def base_node_class(doc):
+        params = {t.name: t for t in PortTraitsEnum}
+        for _, traits_str in doc.get('input', {}).items():
+            traits = eval(traits_str, {}, params)
+            if traits in PortTraitsEnum.OBJECT:
+                return ObjectNode
+        for _, traits_str in doc.get('output', {}).items():
+            try:
+                traits = eval(traits_str, {}, params)
+            except:
+                pass  # io_mapping
+            else:
+                if traits in PortTraitsEnum.OBJECT:
+                    return ObjectNode
+        return SampleNode
+    
+    base_cls = base_node_class(doc)
+
     def __init__(self):
-        SampleNode.__init__(self)
+        base_cls.__init__(self)
         self.__doc = doc
         input_traits = {}
         params = {t.name: t for t in PortTraitsEnum}
@@ -149,7 +166,7 @@ def declare_node(name, doc):
                 traits = eval(traits_str, {}, params)
                 self._add_output(port_name, traits)
 
-    cls = type(name, (SampleNode, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__})
+    cls = type(name, (base_cls, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__})
     return cls
 
 class MyNodeGraph(NodeGraph):
@@ -310,6 +327,7 @@ if __name__ == '__main__':
 
     graph.register_nodes([
         ConfigNode,
+        SwitchNode,
     ])
 
     # show the node graph widget.
@@ -332,7 +350,7 @@ if __name__ == '__main__':
     # graph.node_double_clicked.connect(display_properties_bin)
     
     t1 = QTimer()
-    t1.setInterval(5 * 1000)  # msec
+    t1.setInterval(1 * 1000)  # msec
     t1.timeout.connect(functools.partial(counter, graph))
     t1.start()
 

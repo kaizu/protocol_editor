@@ -3,7 +3,7 @@
 import datetime
 import uuid
 
-from nodes import SampleNode, NodeStatusEnum, PortTraitsEnum
+from nodes import SampleNode, BuiltinNode, NodeStatusEnum, PortTraitsEnum
 
 from logging import getLogger
 
@@ -18,22 +18,31 @@ class Simulator:
         self.__tokens = {}
 
     def execute(self, node: SampleNode) -> NodeStatusEnum:
-        for output in node.output_ports():
-            traits = node.get_port_traits(output.name())
-            if output.name() in node.io_mapping():
-                value = self.__results[(node.name(), node.io_mapping()[output.name()])]
-            else:
-                if traits in PortTraitsEnum.DATA:
-                    value = {'value': 100, 'traits': traits}
-                elif traits in PortTraitsEnum.OBJECT:
-                    value = {'value': uuid.uuid4(), 'traits': traits}
+        new_status = NodeStatusEnum.DONE
+
+        if isinstance(node, BuiltinNode):
+            input_tokens = {input.name(): self.__results[(node.name(), input.name())] for input in node.input_ports()}
+            output_tokens = node.execute(input_tokens)
+            for key, value in output_tokens.items():
+                self.__results[(node.name(), key)] = value
+                self.__tokens[(node.name(), key)] = value
+        else:
+            for output in node.output_ports():
+                traits = node.get_port_traits(output.name())
+                if output.name() in node.io_mapping():
+                    value = self.__results[(node.name(), node.io_mapping()[output.name()])]  # self.__tokens?
                 else:
-                    assert False, "Never reach here {}".format(traits)
-            self.__results[(node.name(), output.name())] = value
-            self.__tokens[(node.name(), output.name())] = value
+                    if traits in PortTraitsEnum.DATA:
+                        value = {'value': 100, 'traits': traits}
+                    elif traits in PortTraitsEnum.OBJECT:
+                        value = {'value': uuid.uuid4(), 'traits': traits}
+                    else:
+                        assert False, "Never reach here {}".format(traits)
+                self.__results[(node.name(), output.name())] = value
+                self.__tokens[(node.name(), output.name())] = value
 
         logger.info("execute %s", self.__results)
-        return NodeStatusEnum.DONE
+        return new_status
 
     def run(self, node: SampleNode) -> NodeStatusEnum:
         logger.info('run %s', node)
@@ -58,7 +67,8 @@ class Simulator:
             return NodeStatusEnum.ERROR
         start = self.__scheduler[node.name]
         now = datetime.datetime.now()
-        if (now - start).total_seconds() > 10:
+        duration = 10 if not isinstance(node, BuiltinNode) else 0
+        if (now - start).total_seconds() >= duration:
             del self.__scheduler[node.name]
             return self.execute(node)
         return NodeStatusEnum.RUNNING

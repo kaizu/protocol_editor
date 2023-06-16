@@ -54,6 +54,7 @@ class PortTraitsEnum(IntFlag):
     TUBE = auto()
     PLATE = auto()
     OBJECT = TUBE | PLATE
+    ANY = DATA | OBJECT
 
 class BasicNode(BaseNode):
     """
@@ -124,12 +125,22 @@ class SampleNode(BasicNode):
         self.__io_mapping = {}
 
         self.create_property('status', NodeStatusEnum.ERROR)
-        self.add_text_input('station', tab='widgets')
         self.add_text_input('_status', tab='widgets')
 
     def set_io_mapping(self, output_port_name, input_port_name):
         assert output_port_name in self.outputs(), output_port_name
         assert input_port_name in self.inputs(), input_port_name
+
+        input_traits = super(SampleNode, self).get_port_traits(input_port_name)
+        if input_traits not in PortTraitsEnum.DATA:
+            assert (
+                output_port_name in self.__io_mapping
+                or sum(1 for name in self.__io_mapping.values() if name == input_port_name) == 0
+            ), "{} {} {}".format(output_port_name, input_port_name, input_traits)
+
+        self._set_io_mapping(output_port_name, input_port_name)
+
+    def _set_io_mapping(self, output_port_name, input_port_name):
         self.__io_mapping[output_port_name] = input_port_name
     
     def io_mapping(self):
@@ -162,3 +173,35 @@ class SampleNode(BasicNode):
             assert False, "Never reach here {}".format(value)
 
         self.set_property('_status', NodeStatusEnum(value).name)
+
+class ObjectNode(SampleNode):
+
+    def __init__(self):
+        super(ObjectNode, self).__init__()
+        self.add_text_input('station', tab='widgets')
+
+class BuiltinNode(SampleNode):
+
+    def execute(self, sim):
+        raise NotImplementedError("Override this")
+
+class SwitchNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "SwtichNode"
+
+    def __init__(self):
+        super(SwitchNode, self).__init__()
+        # self.__doc = doc
+        traits = PortTraitsEnum.OBJECT  # ANY?
+        self._add_input("in1", traits)
+        self._add_input("cond1", PortTraitsEnum.DATA)
+        self._add_output("out1", traits)
+        self._add_output("out2", traits)
+        self._set_io_mapping("out1", "in1")
+        self._set_io_mapping("out2", "in1")
+    
+    def execute(self, input_tokens):
+        dst = "out1" if input_tokens["cond1"]["value"] else "out2"
+        return {dst: input_tokens["in1"]}
