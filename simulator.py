@@ -3,7 +3,7 @@
 import datetime
 import uuid
 
-from nodes import SampleNode, BuiltinNode, NodeStatusEnum, PortTraitsEnum
+from nodes import SampleNode, BuiltinNode, ObjectNode, NodeStatusEnum, PortTraitsEnum
 
 from logging import getLogger
 
@@ -41,7 +41,7 @@ class Simulator:
                 self.__results[(node.name(), output.name())] = value
                 self.__tokens[(node.name(), output.name())] = value
 
-        logger.info("execute %s", self.__results)
+        logger.debug("execute %s", self.__results)
         return new_status
 
     def run(self, node: SampleNode) -> NodeStatusEnum:
@@ -67,7 +67,7 @@ class Simulator:
             return NodeStatusEnum.ERROR
         start = self.__scheduler[node.name]
         now = datetime.datetime.now()
-        duration = 10 if not isinstance(node, BuiltinNode) else 0
+        duration = 10 if isinstance(node, ObjectNode) else 0
         if (now - start).total_seconds() >= duration:
             del self.__scheduler[node.name]
             return self.execute(node)

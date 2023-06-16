@@ -27,15 +27,18 @@ logger = getLogger(__name__)
 
 
 def run_session(graph):
+    logger.info("run_session")
     graph._run()
 
 def reset_session(graph):
+    logger.info("reset_session")
     all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
     for node in all_nodes:
         if node.get_property('status') in (NodeStatusEnum.DONE.value, NodeStatusEnum.WAITING.value):
             node.set_property('status', NodeStatusEnum.READY.value)
 
 def verify_session(graph):
+    logger.info("verify_session")
     all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
     for node in all_nodes:
         is_valid = True
@@ -71,7 +74,12 @@ def verify_session(graph):
 
     # logger.info(graph.serialize_session())
 
+loop_count = 0
+
 def counter(graph):
+    global loop_count
+    loop_count += 1
+
     sim = graph.simulator
     all_nodes = [
         node for node in graph.all_nodes()
@@ -303,6 +311,8 @@ if __name__ == '__main__':
     
     getLogger('simulator').addHandler(handler)
     getLogger('simulator').setLevel(INFO)
+    getLogger('nodes').addHandler(handler)
+    getLogger('nodes').setLevel(INFO)
     
     # handle SIGINT to make the app terminate on CTRL+C
     signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -350,7 +360,7 @@ if __name__ == '__main__':
     # graph.node_double_clicked.connect(display_properties_bin)
     
     t1 = QTimer()
-    t1.setInterval(1 * 1000)  # msec
+    t1.setInterval(3 * 1000)  # msec
     t1.timeout.connect(functools.partial(counter, graph))
     t1.start()
 

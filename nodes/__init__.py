@@ -4,8 +4,12 @@ from logging import getLogger
 
 from enum import IntFlag, IntEnum, auto
 
-from Qt import QtGui, QtCore
-from NodeGraphQt import BaseNode
+from Qt import QtGui, QtCore, QtWidgets
+
+from NodeGraphQt import BaseNode, NodeBaseWidget
+from NodeGraphQt.constants import ViewerEnum
+
+logger = getLogger(__name__)
 
 
 def draw_square_port(painter, rect, info):
@@ -158,6 +162,8 @@ class SampleNode(BasicNode):
         return super(SampleNode, self).get_port_traits(name)
     
     def update_color(self):
+        logger.info("update_color %s", self)
+
         value = self.get_property('status')
         if value == NodeStatusEnum.READY.value:
             self.set_color(13, 18, 23)
@@ -172,7 +178,7 @@ class SampleNode(BasicNode):
         else:
             assert False, "Never reach here {}".format(value)
 
-        self.set_property('_status', NodeStatusEnum(value).name)
+        self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
 
 class ObjectNode(SampleNode):
 
@@ -185,6 +191,81 @@ class BuiltinNode(SampleNode):
     def execute(self, sim):
         raise NotImplementedError("Override this")
 
+# class MyNodeLineEdit(NodeBaseWidget):
+
+#     def __init__(self, parent=None, name='', label='', text=''):
+#         super(MyNodeLineEdit, self).__init__(parent, name, label)
+#         bg_color = ViewerEnum.BACKGROUND_COLOR.value
+#         text_color = tuple(map(lambda i, j: i - j, (255, 255, 255),
+#                                bg_color))
+#         style_dict = {
+#             'QLabel': {
+#                 'background': 'rgba({0},{1},{2},20)'.format(*bg_color),
+#                 'border': '1px solid rgb({0},{1},{2})'
+#                           .format(*ViewerEnum.GRID_COLOR.value),
+#                 'border-radius': '3px',
+#                 'color': 'rgba({0},{1},{2},150)'.format(*text_color),
+#             }
+#         }
+#         stylesheet = ''
+#         for css_class, css in style_dict.items():
+#             style = '{} {{\n'.format(css_class)
+#             for elm_name, elm_val in css.items():
+#                 style += '  {}:{};\n'.format(elm_name, elm_val)
+#             style += '}\n'
+#             stylesheet += style
+#         ledit = QtWidgets.QLabel()
+#         ledit.setStyleSheet(stylesheet)
+#         ledit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+#         ledit.setFixedWidth(300)
+#         ledit.setText(text)
+#         self.set_custom_widget(ledit)
+#         # self.widget().setMaximumWidth(300)
+
+#     @property
+#     def type_(self):
+#         return 'MyLineEditNodeWidget'
+
+#     def get_value(self):
+#         """
+#         Returns the widgets current text.
+
+#         Returns:
+#             str: current text.
+#         """
+#         return str(self.get_custom_widget().text())
+
+#     def set_value(self, text=''):
+#         """
+#         Sets the widgets current text.
+
+#         Args:
+#             text (str): new text.
+#         """
+#         if text != self.get_value():
+#             self.get_custom_widget().setText(text)
+#             self.on_value_changed()
+
+# class IONode(BuiltinNode):
+
+#     __identifier__ = "builtins"
+
+#     NODE_NAME = "IONode"
+
+#     def __init__(self):
+#         super(IONode, self).__init__()
+
+#         widget = MyNodeLineEdit(self.view, name="mywidget", text="Saluton, \nMondo!")
+#         self.add_custom_widget(widget, tab='widgets')
+#         # self.add_text_input("mywidget", tab="widgets")
+#         self._add_input("in1", PortTraitsEnum.DATA)
+
+#     def execute(self, input_tokens):
+#         value = input_tokens["in1"]
+#         # value = input_tokens["in1"]["value"]
+#         self.set_property("mywidget", str(value), push_undo=False)
+#         return {}
+    
 class SwitchNode(BuiltinNode):
 
     __identifier__ = "builtins"
