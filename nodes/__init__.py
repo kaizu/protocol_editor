@@ -70,35 +70,35 @@ class BasicNode(BaseNode):
     def get_port_traits(self, name):
         return PortTraitsEnum(self.__port_traits[name])
     
-    def _add_input(self, name, traits, multi=False):
+    def _add_input(self, name, traits):
         if traits in PortTraitsEnum.OBJECT:
-            self.add_input(name, multi_input=multi, painter_func=draw_square_port)
+            self.add_input(name, multi_input=False, painter_func=draw_square_port)
         elif traits in PortTraitsEnum.DATA:
-            self.add_input(name, color=(180, 80, 0), multi_input=multi)
+            self.add_input(name, color=(180, 80, 0), multi_input=False)
         else:
             assert False, 'Never reach here {}'.format(traits)
         self.__port_traits[name] = traits.value
 
-    def _add_output(self, name, traits, multi=False):
+    def _add_output(self, name, traits):
         if traits in PortTraitsEnum.OBJECT:
-            self.add_output(name, multi_output=multi, painter_func=draw_square_port)
+            self.add_output(name, multi_output=False, painter_func=draw_square_port)
         elif traits in PortTraitsEnum.DATA:
-            self.add_output(name, color=(180, 80, 0), multi_output=multi)
+            self.add_output(name, color=(180, 80, 0), multi_output=True)
         else:
             assert False, 'Never reach here {}'.format(traits)
         self.__port_traits[name] = traits.value
 
-    def add_data_input(self, name, multi_input=False):
-        self._add_input(name, PortTraitsEnum.DATA, multi_input)
+    # def add_data_input(self, name, multi_input=False):
+    #     self._add_input(name, PortTraitsEnum.DATA, multi_input)
 
-    def add_data_output(self, name, multi_output=True):
-        self._add_output(name, PortTraitsEnum.DATA, multi_output)
+    # def add_data_output(self, name, multi_output=True):
+    #     self._add_output(name, PortTraitsEnum.DATA, multi_output)
 
-    def add_object_input(self, name, multi_input=False):
-        self._add_input(name, PortTraitsEnum.OBJECT, multi_input)
+    # def add_object_input(self, name, multi_input=False):
+    #     self._add_input(name, PortTraitsEnum.OBJECT, multi_input)
 
-    def add_object_output(self, name, multi_output=False):
-        self._add_output(name, PortTraitsEnum.OBJECT, multi_output)
+    # def add_object_output(self, name, multi_output=False):
+    #     self._add_output(name, PortTraitsEnum.OBJECT, multi_output)
 
 class NodeStatusEnum(IntEnum):
     READY = auto()
