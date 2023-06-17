@@ -92,19 +92,13 @@ def counter(graph):
         new_status = sim.get_status(node)
         logger.info("counter %s", new_status)
         node.set_property('status', new_status.value)
+    
+    for node in all_nodes:
+        if node.get_property('status') == NodeStatusEnum.DONE.value:
+            sim.transmit_token(node)
 
     for node in waiting:
-        runnable = True
-        for input_port in node.input_ports():
-            for another_port in input_port.connected_ports():
-                another = another_port.node()
-                # if another.get_property('status') is not NodeStatusEnum.DONE.value:
-                #     runnable = False
-                #     break
-                if not sim.has_token((another.name(), another_port.name())):
-                    runnable = False
-                    break
-        if runnable:
+        if all(sim.has_token((node.name(), input_port.name())) for input_port in node.input_ports()):
             node.set_property('status', sim.run(node).value)
 
 class MyModel:
@@ -331,6 +325,7 @@ if __name__ == '__main__':
 
     # create graph controller.
     graph = MyNodeGraph(doc=doc)
+    # graph.set_acyclic(False)
 
     # set up context menu for the node graph.
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
