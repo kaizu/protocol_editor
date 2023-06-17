@@ -20,7 +20,8 @@ from NodeGraphQt import (
 )
 from NodeGraphQt.constants import PortTypeEnum
 
-from nodes import PortTraitsEnum, NodeStatusEnum, SampleNode, ObjectNode, SwitchNode
+from nodes import PortTraitsEnum, NodeStatusEnum, SampleNode, ObjectNode
+from nodes.builtins import SwitchNode
 from simulator import Simulator
 
 logger = getLogger(__name__)
@@ -89,7 +90,7 @@ def counter(graph):
     waiting = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.WAITING.value]
 
     for node in running:
-        new_status = sim.get_status(node)
+        new_status = sim.get_status(node)  # execute when done
         logger.info("counter %s", new_status)
         node.set_property('status', new_status.value)
     

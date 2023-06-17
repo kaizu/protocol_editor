@@ -4,7 +4,8 @@ import datetime
 import itertools
 import uuid
 
-from nodes import SampleNode, BuiltinNode, ObjectNode, NodeStatusEnum, PortTraitsEnum
+from nodes import SampleNode, ObjectNode, NodeStatusEnum, PortTraitsEnum
+from nodes.builtins import BuiltinNode
 
 from logging import getLogger
 
