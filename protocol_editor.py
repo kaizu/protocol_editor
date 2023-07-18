@@ -339,7 +339,16 @@ if __name__ == '__main__':
     # show the node graph widget.
     graph_widget = graph.widget
     graph_widget.resize(1100, 800)
-    graph_widget.show()
+
+    splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)  # 水平分割を作成
+    new_widget = QtWidgets.QWidget()  # 新しいウィジェットを作成
+
+    splitter.addWidget(new_widget)  # 新しいウィジェットを分割器に追加
+    splitter.addWidget(graph_widget)  # 既存のウィジェットを分割器に追加
+
+    splitter.show()  # 分割器（とその中のウィジェット）を表示
+
+    #graph_widget.show()
     
     # graph.create_node("nodes.config.ConfigNode")
     
