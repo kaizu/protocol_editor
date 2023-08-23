@@ -59,7 +59,14 @@ class PortTraitsEnum(IntFlag):
     PLATE = auto()
     OBJECT = TUBE | PLATE
     ANY = DATA | OBJECT
-
+    #[<PortTraitsEnum.DATA: 1>, <PortTraitsEnum.TUBE: 2>, <PortTraitsEnum.PLATE: 4>]
+PortTraitsDict = {
+        "DATA"  : PortTraitsEnum.DATA,
+        "TUBE"  : PortTraitsEnum.TUBE,
+        "PLATE" : PortTraitsEnum.PLATE,
+        "OBJECT": PortTraitsEnum.OBJECT,
+        "ANY"   : PortTraitsEnum.ANY,
+}
 class BasicNode(BaseNode):
     """
     A base node for object flow programming.

@@ -20,9 +20,12 @@ from NodeGraphQt import (
 )
 from NodeGraphQt.constants import PortTypeEnum
 
-from nodes import PortTraitsEnum, NodeStatusEnum, SampleNode, ObjectNode
+from nodes import PortTraitsEnum, PortTraitsDict, NodeStatusEnum, SampleNode, ObjectNode
 from nodes.builtins import SwitchNode
 from simulator import Simulator
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
 
 logger = getLogger(__name__)
 
@@ -134,8 +137,12 @@ class MyModel:
 
 def declare_node(name, doc):
     def base_node_class(doc):
-        params = {t.name: t for t in PortTraitsEnum}
+        params = PortTraitsDict.copy()#{t.name: t for t in PortTraitsEnum}
+        pp.pprint(params)
         for _, traits_str in doc.get('input', {}).items():
+            pp.pprint(traits_str)
+            pp.pprint(type(PortTraitsEnum))
+            pp.pprint(list(PortTraitsEnum))
             traits = eval(traits_str, {}, params)
             if traits in PortTraitsEnum.OBJECT:
                 return ObjectNode
