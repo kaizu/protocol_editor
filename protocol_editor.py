@@ -138,7 +138,7 @@ class MyModel:
 def declare_node(name, doc):
     def base_node_class(doc):
         params = PortTraitsDict.copy()#{t.name: t for t in PortTraitsEnum}
-        pp.pprint(params)
+        #pp.pprint(params)
         for _, traits_str in doc.get('input', {}).items():
             pp.pprint(traits_str)
             pp.pprint(type(PortTraitsEnum))
@@ -162,7 +162,8 @@ def declare_node(name, doc):
         base_cls.__init__(self)
         self.__doc = doc
         input_traits = {}
-        params = {t.name: t for t in PortTraitsEnum}
+        #params = {t.name: t for t in PortTraitsEnum}
+        params = PortTraitsDict.copy()#{t.name: t for t in PortTraitsEnum}
         for port_name, traits_str in doc.get('input', {}).items():
             traits = eval(traits_str, {}, params)
             input_traits[port_name] = traits
@@ -347,7 +348,8 @@ if __name__ == '__main__':
     graph_widget = graph.widget
     graph_widget.resize(1100, 800)
 
-    splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)  # 水平分割を作成
+
+    splitter   = QtWidgets.QSplitter(QtCore.Qt.Horizontal)  # 水平分割を作成
     new_widget = QtWidgets.QWidget()  # 新しいウィジェットを作成
 
     splitter.addWidget(new_widget)  # 新しいウィジェットを分割器に追加

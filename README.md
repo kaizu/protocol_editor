@@ -11,3 +11,7 @@ $ python basic_example.py
 Press `Tab` to create a new node.
 
 See also https://github.com/jchanvfx/NodeGraphQt
+
+
+# Environment
+use `Python 3.10.10` and libraries listed in `requirements.txt`
