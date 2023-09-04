@@ -9,6 +9,8 @@ from Qt import QtGui, QtCore, QtWidgets
 from NodeGraphQt import BaseNode, NodeBaseWidget
 from NodeGraphQt.constants import ViewerEnum
 
+from . import entity
+
 logger = getLogger(__name__)
 
 
@@ -53,13 +55,6 @@ def draw_square_port(painter, rect, info):
 
     painter.restore()
 
-class PortTraitsEnum(IntFlag):
-    DATA = auto()
-    TUBE = auto()
-    PLATE = auto()
-    OBJECT = TUBE | PLATE
-    ANY = DATA | OBJECT
-
 class BasicNode(BaseNode):
     """
     A base node for object flow programming.
@@ -73,37 +68,25 @@ class BasicNode(BaseNode):
         self.__port_traits = {}
 
     def get_port_traits(self, name):
-        return PortTraitsEnum(self.__port_traits[name])
-    
+        return self.__port_traits[name]
+     
     def _add_input(self, name, traits):
-        if traits in PortTraitsEnum.OBJECT:
+        if entity.is_subclass_of(traits, entity.Object):
             self.add_input(name, multi_input=False, painter_func=draw_square_port)
-        elif traits in PortTraitsEnum.DATA:
+        elif entity.is_subclass_of(traits, entity.Data):
             self.add_input(name, color=(180, 80, 0), multi_input=False)
         else:
             assert False, 'Never reach here {}'.format(traits)
-        self.__port_traits[name] = traits.value
+        self.__port_traits[name] = traits
 
     def _add_output(self, name, traits):
-        if traits in PortTraitsEnum.OBJECT:
+        if entity.is_subclass_of(traits, entity.Object):
             self.add_output(name, multi_output=False, painter_func=draw_square_port)
-        elif traits in PortTraitsEnum.DATA:
+        elif entity.is_subclass_of(traits, entity.Data):
             self.add_output(name, color=(180, 80, 0), multi_output=True)
         else:
             assert False, 'Never reach here {}'.format(traits)
-        self.__port_traits[name] = traits.value
-
-    # def add_data_input(self, name, multi_input=False):
-    #     self._add_input(name, PortTraitsEnum.DATA, multi_input)
-
-    # def add_data_output(self, name, multi_output=True):
-    #     self._add_output(name, PortTraitsEnum.DATA, multi_output)
-
-    # def add_object_input(self, name, multi_input=False):
-    #     self._add_input(name, PortTraitsEnum.OBJECT, multi_input)
-
-    # def add_object_output(self, name, multi_output=False):
-    #     self._add_output(name, PortTraitsEnum.OBJECT, multi_output)
+        self.__port_traits[name] = traits
 
 class NodeStatusEnum(IntEnum):
     READY = auto()
@@ -136,7 +119,7 @@ class SampleNode(BasicNode):
         assert input_port_name in self.inputs(), input_port_name
 
         input_traits = super(SampleNode, self).get_port_traits(input_port_name)
-        if input_traits not in PortTraitsEnum.DATA:
+        if not entity.is_subclass_of(input_traits, entity.Data):
             assert (
                 output_port_name in self.__io_mapping
                 or sum(1 for name in self.__io_mapping.values() if name == input_port_name) == 0

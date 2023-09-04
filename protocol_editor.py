@@ -20,7 +20,8 @@ from NodeGraphQt import (
 )
 from NodeGraphQt.constants import PortTypeEnum
 
-from nodes import PortTraitsEnum, NodeStatusEnum, SampleNode, ObjectNode
+from nodes import NodeStatusEnum, SampleNode, ObjectNode
+import nodes.entity as entity
 from nodes.builtins import SwitchNode
 from simulator import Simulator
 
@@ -61,8 +62,8 @@ def verify_session(graph):
             for another_port in connected_ports:
                 another_traits = another_port.node().get_port_traits(another_port.name())
                 if (
-                    (port.type_() == PortTypeEnum.IN.value and another_traits not in port_traits)
-                    or (port.type_() == PortTypeEnum.OUT.value and port_traits not in another_traits)
+                    (port.type_() == PortTypeEnum.IN.value and not entity.is_subclass_of(another_traits, port_traits))
+                    or (port.type_() == PortTypeEnum.OUT.value and not entity.is_subclass_of(port_traits, another_traits))
                 ):
                     logger.info("%s %s %s", port.type_(), port_traits, another_traits)
                     is_valid = False
@@ -134,10 +135,10 @@ class MyModel:
 
 def declare_node(name, doc):
     def base_node_class(doc):
-        params = {t.name: t for t in PortTraitsEnum}
+        params = entity.get_categories()
         for _, traits_str in doc.get('input', {}).items():
             traits = eval(traits_str, {}, params)
-            if traits in PortTraitsEnum.OBJECT:
+            if entity.is_subclass_of(traits, entity.Object):
                 return ObjectNode
         for _, traits_str in doc.get('output', {}).items():
             try:
@@ -145,7 +146,7 @@ def declare_node(name, doc):
             except:
                 pass  # io_mapping
             else:
-                if traits in PortTraitsEnum.OBJECT:
+                if entity.is_subclass_of(traits, entity.Object):
                     return ObjectNode
         return SampleNode
     
@@ -155,7 +156,7 @@ def declare_node(name, doc):
         base_cls.__init__(self)
         self.__doc = doc
         input_traits = {}
-        params = {t.name: t for t in PortTraitsEnum}
+        params = entity.get_categories()
         for port_name, traits_str in doc.get('input', {}).items():
             traits = eval(traits_str, {}, params)
             input_traits[port_name] = traits

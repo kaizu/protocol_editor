@@ -1,4 +1,5 @@
-from nodes import SampleNode, PortTraitsEnum
+from nodes import SampleNode
+from . import entity
 
 
 class BuiltinNode(SampleNode):
@@ -90,9 +91,9 @@ class SwitchNode(BuiltinNode):
     def __init__(self):
         super(SwitchNode, self).__init__()
         # self.__doc = doc
-        traits = PortTraitsEnum.OBJECT  # ANY?
+        traits = entity.Object  # ANY?
         self._add_input("in1", traits)
-        self._add_input("cond1", PortTraitsEnum.DATA)
+        self._add_input("cond1", entity.Data)
         self._add_output("out1", traits)
         self._add_output("out2", traits)
         self._set_io_mapping("out1", "in1")

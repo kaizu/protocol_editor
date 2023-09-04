@@ -4,7 +4,8 @@ import datetime
 import itertools
 import uuid
 
-from nodes import SampleNode, ObjectNode, NodeStatusEnum, PortTraitsEnum
+from nodes import SampleNode, ObjectNode, NodeStatusEnum
+import nodes.entity as entity
 from nodes.builtins import BuiltinNode
 
 from logging import getLogger
@@ -29,9 +30,9 @@ class Simulator:
                 if output.name() in node.io_mapping():
                     value = input_tokens[node.io_mapping()[output.name()]]
                 else:
-                    if traits in PortTraitsEnum.DATA:
+                    if entity.is_subclass_of(traits, entity.Data):
                         value = {'value': 100, 'traits': traits}
-                    elif traits in PortTraitsEnum.OBJECT:
+                    elif entity.is_subclass_of(traits, entity.Object):
                         value = {'value': uuid.uuid4(), 'traits': traits}
                     else:
                         assert False, "Never reach here {}".format(traits)
