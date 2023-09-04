@@ -168,4 +168,5 @@ class ObjectNode(SampleNode):
     def __init__(self):
         super(ObjectNode, self).__init__()
         # self.add_text_input('station', tab='widgets')
+        self.create_property('station', "")
         
