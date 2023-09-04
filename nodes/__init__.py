@@ -112,7 +112,7 @@ class SampleNode(BasicNode):
         self.__io_mapping = {}
 
         self.create_property('status', NodeStatusEnum.ERROR)
-        self.add_text_input('_status', tab='widgets')
+        # self.add_text_input('_status', tab='widgets')
 
     def set_io_mapping(self, output_port_name, input_port_name):
         assert output_port_name in self.outputs(), output_port_name
@@ -161,11 +161,11 @@ class SampleNode(BasicNode):
         else:
             assert False, "Never reach here {}".format(value)
 
-        self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
+        # self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
 
 class ObjectNode(SampleNode):
 
     def __init__(self):
         super(ObjectNode, self).__init__()
-        self.add_text_input('station', tab='widgets')
+        # self.add_text_input('station', tab='widgets')
         

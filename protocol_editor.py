@@ -47,7 +47,7 @@ def verify_session(graph):
 
         if isinstance(node, ObjectNode):
             station = graph.allocate_station(node)
-            node.set_property("station", station, push_undo=False)
+            # node.set_property("station", station, push_undo=False)
             is_valid = is_valid and station != ""
 
         for port in itertools.chain(
