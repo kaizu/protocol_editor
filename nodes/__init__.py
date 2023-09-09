@@ -4,6 +4,8 @@ from logging import getLogger
 
 from enum import IntFlag, IntEnum, auto
 
+import numpy
+
 from Qt import QtGui, QtCore, QtWidgets
 
 from NodeGraphQt import BaseNode
@@ -120,7 +122,13 @@ class SampleNode(BasicNode):
     def execute(self, input_tokens):
         assert all(input.name() in input_tokens for input in self.input_ports())
         if all(self.has_property(output.name()) for output in self.output_ports()):
-            return {output.name(): {"value": eval(self.get_property(output.name()), {"__builtins__": None}, {}), "traits": self.get_port_traits(output.name())} for output in self.output_ports()}  # ast.literal_eval
+            #XXX: ast.literal_eval
+            return {
+                output.name(): {
+                    "value": eval(self.get_property(output.name()),{"__builtins__": None}, {}),
+                    "traits": self.get_port_traits(output.name())
+                }
+                for output in self.output_ports()}
         else:
             raise NotImplementedError()
 

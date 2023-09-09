@@ -1,5 +1,6 @@
 node:
-  IntegerInputNode:
+  Integer:
+    tab: primitive
     output:
       out1: Integer
     property:

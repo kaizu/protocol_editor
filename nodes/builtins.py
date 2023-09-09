@@ -1,4 +1,9 @@
+import numpy
+
+from NodeGraphQt import NodeBaseWidget
 from NodeGraphQt.constants import NodePropWidgetEnum
+
+import PySide2.QtWidgets
 
 from nodes import SampleNode
 from . import entity
@@ -8,6 +13,54 @@ class BuiltinNode(SampleNode):
 
     def execute(self, sim):
         raise NotImplementedError("Override this")
+
+class DoubleSpinBoxWidget(NodeBaseWidget):
+
+    def __init__(self, parent=None, name='', label=''):
+        super(DoubleSpinBoxWidget, self).__init__(parent, name, label)
+        
+        #ledit = QtWidgets.QLabel()
+        #ledit.setStyleSheet(stylesheet)
+        #ledit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        #ledit.setFixedWidth(300)
+        #ledit.setText(text)
+        box = PySide2.QtWidgets.QDoubleSpinBox()
+        box.setRange(-1000, +1000)
+        box.setDecimals(0)
+        self.set_custom_widget(box)
+        # self.widget().setMaximumWidth(300)
+
+        # connect up the signals & slots.
+        self.wire_signals()
+
+    def wire_signals(self):
+        widget = self.get_custom_widget()
+        widget.valueChanged.connect(self.on_value_changed)
+
+    @property
+    def type_(self):
+        return 'DoubleSpinBoxWidget'
+
+    def get_value(self):
+        """
+        Returns the widgets current text.
+
+        Returns:
+            str: current text.
+        """
+        return self.get_custom_widget().value()
+
+    def set_value(self, text=''):
+        """
+        Sets the widgets current text.
+
+        Args:
+            text (str): new text.
+        """
+        value = int(text)
+        if value != self.get_value():
+            self.get_custom_widget().setValue(value)
+            self.on_value_changed()
 
 # class MyNodeLineEdit(NodeBaseWidget):
 
@@ -84,6 +137,57 @@ class BuiltinNode(SampleNode):
 #         self.set_property("mywidget", str(value), push_undo=False)
 #         return {}
 
+class IntegerNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "IntegerNode"
+
+    def __init__(self):
+        super(IntegerNode, self).__init__()
+
+        widget = DoubleSpinBoxWidget(self.view, name="value")
+        self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+
+        self._add_output("value", entity.Integer)
+        # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+    
+    def execute(self, input_tokens):
+        return {"value": {"value": int(self.get_property("value")), "traits": entity.Integer}}
+
+class ArrayNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "ArrayNode"
+
+    def __init__(self):
+        super(ArrayNode, self).__init__()
+        self._add_input("size", entity.Integer)
+        self._add_input("fill_value", entity.Integer)
+        self._add_output("value", entity.Array)
+    
+    def execute(self, input_tokens):
+        fill_value = input_tokens["fill_value"]["value"]
+        size = input_tokens["size"]["value"]
+        return {"value": {"value": numpy.full(size, fill_value), "traits": entity.Array}}
+
+class Array96Node(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Array96Node"
+
+    def __init__(self):
+        super(Array96Node, self).__init__()
+        self._add_input("in1", entity.Integer)
+        self._add_output("out1", entity.Array96)
+    
+    def execute(self, input_tokens):
+        value = input_tokens["in1"]
+        assert "value" in value and isinstance(value["value"], int)
+        return {"out1": {"value": numpy.full(96, value["value"]), "traits": entity.Array96}}
+    
 class DisplayNode(BuiltinNode):
 
     __identifier__ = "builtins"

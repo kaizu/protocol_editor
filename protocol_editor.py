@@ -6,6 +6,7 @@ import copy
 import itertools
 import functools
 import signal
+import inspect
 
 from Qt import QtCore, QtWidgets
 from Qt.QtCore import QTimer
@@ -22,7 +23,8 @@ from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 
 from nodes import NodeStatusEnum, SampleNode, ObjectNode
 import nodes.entity as entity
-from nodes.builtins import SwitchNode, DisplayNode
+# from nodes.builtins import SwitchNode, DisplayNode, Array96Node
+import nodes.builtins
 from simulator import Simulator
 
 logger = getLogger(__name__)
@@ -173,7 +175,8 @@ def declare_node(name, doc):
             assert not self.has_property(prop_name)
             self.create_property(prop_name, str(value), widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
 
-    cls = type(name, (base_cls, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__})
+    tab = doc.get("tab", "test")
+    cls = type(name, (base_cls, ), {'__identifier__': f'nodes.{tab}', 'NODE_NAME': name, '__init__': __init__})
     return cls
 
 class MyNodeGraph(NodeGraph):
@@ -337,8 +340,12 @@ if __name__ == '__main__':
 
     graph.register_nodes([
         ConfigNode,
-        SwitchNode,
-        DisplayNode,
+    ])
+
+    graph.register_nodes([
+        nodecls
+        for _, nodecls in inspect.getmembers(nodes.builtins, inspect.isclass)
+        if issubclass(nodecls, nodes.builtins.BuiltinNode) and nodecls is not nodes.builtins.BuiltinNode
     ])
 
     # show the node graph widget.
@@ -361,7 +368,8 @@ if __name__ == '__main__':
     graph.node_double_clicked.connect(display_properties_bin)
     
     t1 = QTimer()
-    t1.setInterval(3 * 1000)  # msec
+    # t1.setInterval(3 * 1000)  # msec
+    t1.setInterval(0.5 * 1000)  # msec
     t1.timeout.connect(functools.partial(counter, graph))
     t1.start()
 
