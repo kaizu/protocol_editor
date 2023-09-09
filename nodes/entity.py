@@ -36,6 +36,8 @@ class Plate(Object): pass
 
 class Plate96(Plate): pass
 
+class Integer(Data): pass
+
 class Array(Data): pass
 
 class Array96(Array): pass

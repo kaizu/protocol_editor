@@ -1,3 +1,5 @@
+from NodeGraphQt.constants import NodePropWidgetEnum
+
 from nodes import SampleNode
 from . import entity
 
@@ -81,7 +83,23 @@ class BuiltinNode(SampleNode):
 #         # value = input_tokens["in1"]["value"]
 #         self.set_property("mywidget", str(value), push_undo=False)
 #         return {}
+
+class DisplayNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "DisplayNode"
+
+    def __init__(self):
+        super(DisplayNode, self).__init__()
+        self._add_input("in1", entity.Data)
+        self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
+    def execute(self, input_tokens):
+        assert "in1" in input_tokens
+        self.set_property("in1", str(input_tokens["in1"]))
+        return {}
+        
 class SwitchNode(BuiltinNode):
 
     __identifier__ = "builtins"

@@ -21,9 +21,10 @@ class Simulator:
         self.__tokens = {}
 
     def _execute(self, node: SampleNode, input_tokens: dict[str, object]) -> list[dict[tuple[str, str], object]]:
-        if isinstance(node, BuiltinNode):
+        try:
             output_tokens = node.execute(input_tokens)
-        else:
+        except NotImplementedError as err:
+            assert not isinstance(node, BuiltinNode)
             output_tokens = {}
             for output in node.output_ports():
                 traits = node.get_port_traits(output.name())

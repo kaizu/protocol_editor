@@ -6,8 +6,8 @@ from enum import IntFlag, IntEnum, auto
 
 from Qt import QtGui, QtCore, QtWidgets
 
-from NodeGraphQt import BaseNode, NodeBaseWidget
-from NodeGraphQt.constants import ViewerEnum
+from NodeGraphQt import BaseNode
+# from NodeGraphQt.constants import ViewerEnum, NodePropWidgetEnum
 
 from . import entity
 
@@ -88,6 +88,9 @@ class BasicNode(BaseNode):
             assert False, 'Never reach here {}'.format(traits)
         self.__port_traits[name] = traits
 
+    def execute(self, input_tokens):
+        raise NotImplementedError()
+    
 class NodeStatusEnum(IntEnum):
     READY = auto()
     ERROR = auto()
@@ -113,6 +116,13 @@ class SampleNode(BasicNode):
 
         self.create_property('status', NodeStatusEnum.ERROR)
         # self.add_text_input('_status', tab='widgets')
+
+    def execute(self, input_tokens):
+        assert all(input.name() in input_tokens for input in self.input_ports())
+        if all(self.has_property(output.name()) for output in self.output_ports()):
+            return {output.name(): {"value": eval(self.get_property(output.name()), {"__builtins__": None}, {}), "traits": self.get_port_traits(output.name())} for output in self.output_ports()}  # ast.literal_eval
+        else:
+            raise NotImplementedError()
 
     def set_io_mapping(self, output_port_name, input_port_name):
         assert output_port_name in self.outputs(), output_port_name
@@ -163,10 +173,12 @@ class SampleNode(BasicNode):
 
         # self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
 
+from NodeGraphQt import PropertiesBinWidget
+
 class ObjectNode(SampleNode):
 
     def __init__(self):
         super(ObjectNode, self).__init__()
         # self.add_text_input('station', tab='widgets')
-        self.create_property('station', "")
+        # self.create_property('station', "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
         

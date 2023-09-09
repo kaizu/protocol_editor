@@ -14,15 +14,15 @@ from Qt.QtGui import QPalette, QColor
 from NodeGraphQt import (
     NodeGraph,
     BaseNode,
-    # PropertiesBinWidget,
+    PropertiesBinWidget,
     # NodesTreeWidget,
     # NodesPaletteWidget
 )
-from NodeGraphQt.constants import PortTypeEnum
+from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 
 from nodes import NodeStatusEnum, SampleNode, ObjectNode
 import nodes.entity as entity
-from nodes.builtins import SwitchNode
+from nodes.builtins import SwitchNode, DisplayNode
 from simulator import Simulator
 
 logger = getLogger(__name__)
@@ -169,6 +169,9 @@ def declare_node(name, doc):
             else:
                 traits = eval(traits_str, {}, params)
                 self._add_output(port_name, traits)
+        for prop_name, value in doc.get('property', {}).items():
+            assert not self.has_property(prop_name)
+            self.create_property(prop_name, str(value), widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
 
     cls = type(name, (base_cls, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__})
     return cls
@@ -335,6 +338,7 @@ if __name__ == '__main__':
     graph.register_nodes([
         ConfigNode,
         SwitchNode,
+        DisplayNode,
     ])
 
     # show the node graph widget.
@@ -344,17 +348,17 @@ if __name__ == '__main__':
     
     # graph.create_node("nodes.config.ConfigNode")
     
-    # # create a node properties bin widget.
-    # properties_bin = PropertiesBinWidget(node_graph=graph)
-    # properties_bin.setWindowFlags(QtCore.Qt.Tool)
+    # create a node properties bin widget.
+    properties_bin = PropertiesBinWidget(node_graph=graph)
+    properties_bin.setWindowFlags(QtCore.Qt.Tool)
 
-    # # example show the node properties bin widget when a node is double clicked.
-    # def display_properties_bin(node):
-    #     if not properties_bin.isVisible():
-    #         properties_bin.show()
+    # example show the node properties bin widget when a node is double clicked.
+    def display_properties_bin(node):
+        if not properties_bin.isVisible():
+            properties_bin.show()
 
-    # # wire function to "node_double_clicked" signal.
-    # graph.node_double_clicked.connect(display_properties_bin)
+    # wire function to "node_double_clicked" signal.
+    graph.node_double_clicked.connect(display_properties_bin)
     
     t1 = QTimer()
     t1.setInterval(3 * 1000)  # msec

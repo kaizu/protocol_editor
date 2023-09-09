@@ -1,4 +1,9 @@
 node:
+  IntegerInputNode:
+    output:
+      out1: Integer
+    property:
+      out1: "0"
   DataInputNode:
     output:
       out1: Data
