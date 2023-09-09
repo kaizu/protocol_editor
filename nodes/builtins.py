@@ -232,6 +232,40 @@ class LengthNode(BuiltinNode):
         a = input_tokens["a"]["value"]
         return {"value": {"value": len(a), "traits": entity.Integer}}
 
+class AddNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Add"
+
+    def __init__(self):
+        super(AddNode, self).__init__()
+        self._add_input("a", entity.Data)
+        self._add_input("b", entity.Data)
+        self._add_output("value", entity.Data)
+    
+    def execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        b = input_tokens["b"]["value"]
+        return {"value": {"value": a + b, "traits": entity.Data}}
+
+class SubNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Sub"
+
+    def __init__(self):
+        super(SubNode, self).__init__()
+        self._add_input("a", entity.Data)
+        self._add_input("b", entity.Data)
+        self._add_output("value", entity.Data)
+    
+    def execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        b = input_tokens["b"]["value"]
+        return {"value": {"value": a - b, "traits": entity.Data}}
+
 class DisplayNode(BuiltinNode):
 
     __identifier__ = "builtins"
