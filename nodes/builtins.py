@@ -19,16 +19,10 @@ class DoubleSpinBoxWidget(NodeBaseWidget):
     def __init__(self, parent=None, name='', label=''):
         super(DoubleSpinBoxWidget, self).__init__(parent, name, label)
         
-        #ledit = QtWidgets.QLabel()
-        #ledit.setStyleSheet(stylesheet)
-        #ledit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        #ledit.setFixedWidth(300)
-        #ledit.setText(text)
         box = PySide2.QtWidgets.QDoubleSpinBox()
         box.setRange(-1000, +1000)
         box.setDecimals(0)
         self.set_custom_widget(box)
-        # self.widget().setMaximumWidth(300)
 
         # connect up the signals & slots.
         self.wire_signals()
@@ -141,7 +135,7 @@ class IntegerNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "IntegerNode"
+    NODE_NAME = "Integer"
 
     def __init__(self):
         super(IntegerNode, self).__init__()
@@ -155,14 +149,14 @@ class IntegerNode(BuiltinNode):
     def execute(self, input_tokens):
         return {"value": {"value": int(self.get_property("value")), "traits": entity.Integer}}
 
-class ArrayNode(BuiltinNode):
+class FullNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "ArrayNode"
+    NODE_NAME = "Full"
 
     def __init__(self):
-        super(ArrayNode, self).__init__()
+        super(FullNode, self).__init__()
         self._add_input("size", entity.Integer)
         self._add_input("fill_value", entity.Integer)
         self._add_output("value", entity.Array)
@@ -172,22 +166,42 @@ class ArrayNode(BuiltinNode):
         size = input_tokens["size"]["value"]
         return {"value": {"value": numpy.full(size, fill_value), "traits": entity.Array}}
 
-class Array96Node(BuiltinNode):
+class RangeNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "Array96Node"
+    NODE_NAME = "Range"
 
     def __init__(self):
-        super(Array96Node, self).__init__()
-        self._add_input("in1", entity.Integer)
-        self._add_output("out1", entity.Array96)
+        super(RangeNode, self).__init__()
+        self._add_input("start", entity.Integer)
+        self._add_input("stop", entity.Integer)
+        self._add_input("step", entity.Integer)
+        self._add_output("value", entity.Array)
     
     def execute(self, input_tokens):
-        value = input_tokens["in1"]
-        assert "value" in value and isinstance(value["value"], int)
-        return {"out1": {"value": numpy.full(96, value["value"]), "traits": entity.Array96}}
+        start = input_tokens["start"]["value"]
+        stop = input_tokens["stop"]["value"]
+        step = input_tokens["step"]["value"]
+        return {"value": {"value": numpy.arange(start, stop, step), "traits": entity.Array}}
+
+class RepeatNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Repeat"
+
+    def __init__(self):
+        super(RepeatNode, self).__init__()
+        self._add_input("a", entity.Array)
+        self._add_input("repeats", entity.Integer)
+        self._add_output("value", entity.Array)
     
+    def execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        repeats = input_tokens["repeats"]["value"]
+        return {"value": {"value": numpy.repeat(a, repeats), "traits": entity.Array}}
+
 class DisplayNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -204,23 +218,23 @@ class DisplayNode(BuiltinNode):
         self.set_property("in1", str(input_tokens["in1"]))
         return {}
         
-class SwitchNode(BuiltinNode):
+# class SwitchNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+#     __identifier__ = "builtins"
 
-    NODE_NAME = "SwtichNode"
+#     NODE_NAME = "SwtichNode"
 
-    def __init__(self):
-        super(SwitchNode, self).__init__()
-        # self.__doc = doc
-        traits = entity.Object  # ANY?
-        self._add_input("in1", traits)
-        self._add_input("cond1", entity.Data)
-        self._add_output("out1", traits)
-        self._add_output("out2", traits)
-        self._set_io_mapping("out1", "in1")
-        self._set_io_mapping("out2", "in1")
+#     def __init__(self):
+#         super(SwitchNode, self).__init__()
+#         # self.__doc = doc
+#         traits = entity.Object  # ANY?
+#         self._add_input("in1", traits)
+#         self._add_input("cond1", entity.Data)
+#         self._add_output("out1", traits)
+#         self._add_output("out2", traits)
+#         self._set_io_mapping("out1", "in1")
+#         self._set_io_mapping("out2", "in1")
     
-    def execute(self, input_tokens):
-        dst = "out1" if input_tokens["cond1"]["value"] else "out2"
-        return {dst: input_tokens["in1"]}
+#     def execute(self, input_tokens):
+#         dst = "out1" if input_tokens["cond1"]["value"] else "out2"
+#         return {dst: input_tokens["in1"]}

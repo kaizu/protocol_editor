@@ -1,5 +1,5 @@
 node:
-  Integer:
+  IntegerNode:
     tab: primitive
     output:
       out1: Integer
