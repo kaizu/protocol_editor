@@ -43,7 +43,11 @@ class Simulator:
     def execute(self, node: SampleNode) -> NodeStatusEnum:
         new_status = NodeStatusEnum.DONE
 
-        input_tokens = {input.name(): self.__results[(node.name(), input.name())] for input in node.input_ports()}
+        input_tokens = {
+            input.name(): self.__results[(node.name(), input.name())]
+            for input in node.input_ports()
+            if (node.name(), input.name()) in self.__results  # For optional inputs
+        }
         output_tokens = self._execute(node, input_tokens)
 
         output_tokens = {(node.name(), key): value for key, value in output_tokens.items()}

@@ -55,12 +55,18 @@ def verify_session(graph):
         for port in itertools.chain(
             node.input_ports(), node.output_ports()
         ):
+            port_traits = node.get_port_traits(port.name())
+
             connected_ports = port.connected_ports()
             if len(connected_ports) == 0:
-                is_valid = False
-                break
+                if node.is_optional_port(port.name()):
+                    pass
+                elif port.type_() == PortTypeEnum.OUT.value and entity.is_subclass_of(port_traits, entity.Data):
+                    pass
+                else:
+                    is_valid = False
+                    break
 
-            port_traits = node.get_port_traits(port.name())
             for another_port in connected_ports:
                 another_traits = another_port.node().get_port_traits(another_port.name())
                 if (
@@ -102,7 +108,7 @@ def counter(graph):
             sim.transmit_token(node)
 
     for node in waiting:
-        if all(sim.has_token((node.name(), input_port.name())) for input_port in node.input_ports()):
+        if all((node.is_optional_port(input_port.name()) and len(input_port.connected_ports()) == 0) or sim.has_token((node.name(), input_port.name())) for input_port in node.input_ports()):
             node.set_property('status', sim.run(node).value)
 
 class MyModel:

@@ -158,11 +158,11 @@ class FullNode(BuiltinNode):
     def __init__(self):
         super(FullNode, self).__init__()
         self._add_input("size", entity.Integer)
-        self._add_input("fill_value", entity.Integer)
+        self._add_input("fill_value", entity.Integer, True)
         self._add_output("value", entity.Array)
     
     def execute(self, input_tokens):
-        fill_value = input_tokens["fill_value"]["value"]
+        fill_value = input_tokens["fill_value"]["value"] if "fill_value" in input_tokens else 0
         size = input_tokens["size"]["value"]
         return {"value": {"value": numpy.full(size, fill_value), "traits": entity.Array}}
 
@@ -174,15 +174,15 @@ class RangeNode(BuiltinNode):
 
     def __init__(self):
         super(RangeNode, self).__init__()
-        self._add_input("start", entity.Integer)
+        self._add_input("start", entity.Integer, True)
         self._add_input("stop", entity.Integer)
-        self._add_input("step", entity.Integer)
+        self._add_input("step", entity.Integer, True)
         self._add_output("value", entity.Array)
     
     def execute(self, input_tokens):
-        start = input_tokens["start"]["value"]
+        start = input_tokens["start"]["value"] if "start" in input_tokens else 0
         stop = input_tokens["stop"]["value"]
-        step = input_tokens["step"]["value"]
+        step = input_tokens["step"]["value"] if "step" in input_tokens else 1
         return {"value": {"value": numpy.arange(start, stop, step), "traits": entity.Array}}
 
 class RepeatNode(BuiltinNode):
@@ -202,11 +202,41 @@ class RepeatNode(BuiltinNode):
         repeats = input_tokens["repeats"]["value"]
         return {"value": {"value": numpy.repeat(a, repeats), "traits": entity.Array}}
 
+class SumNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Sum"
+
+    def __init__(self):
+        super(SumNode, self).__init__()
+        self._add_input("a", entity.Array)
+        self._add_output("value", entity.Integer)
+    
+    def execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        return {"value": {"value": numpy.sum(a), "traits": entity.Integer}}
+
+class LengthNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Length"
+
+    def __init__(self):
+        super(LengthNode, self).__init__()
+        self._add_input("a", entity.Array)
+        self._add_output("value", entity.Integer)
+    
+    def execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        return {"value": {"value": len(a), "traits": entity.Integer}}
+
 class DisplayNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "DisplayNode"
+    NODE_NAME = "Display"
 
     def __init__(self):
         super(DisplayNode, self).__init__()

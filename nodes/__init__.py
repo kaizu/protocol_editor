@@ -70,16 +70,20 @@ class BasicNode(BaseNode):
         self.__port_traits = {}
 
     def get_port_traits(self, name):
-        return self.__port_traits[name]
-     
-    def _add_input(self, name, traits):
+        return self.__port_traits[name][0]
+
+    def is_optional_port(self, name):
+        return self.__port_traits[name][1]
+
+    def _add_input(self, name, traits, optional=False):
+        assert not optional or entity.is_subclass_of(traits, entity.Data)
         if entity.is_subclass_of(traits, entity.Object):
             self.add_input(name, multi_input=False, painter_func=draw_square_port)
         elif entity.is_subclass_of(traits, entity.Data):
             self.add_input(name, color=(180, 80, 0), multi_input=False)
         else:
             assert False, 'Never reach here {}'.format(traits)
-        self.__port_traits[name] = traits
+        self.__port_traits[name] = (traits, optional)
 
     def _add_output(self, name, traits):
         if entity.is_subclass_of(traits, entity.Object):
@@ -88,7 +92,7 @@ class BasicNode(BaseNode):
             self.add_output(name, color=(180, 80, 0), multi_output=True)
         else:
             assert False, 'Never reach here {}'.format(traits)
-        self.__port_traits[name] = traits
+        self.__port_traits[name] = (traits, False)
 
     def execute(self, input_tokens):
         raise NotImplementedError()
