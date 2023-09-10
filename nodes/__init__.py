@@ -9,7 +9,7 @@ import numpy
 from Qt import QtGui, QtCore, QtWidgets
 
 from NodeGraphQt import BaseNode
-# from NodeGraphQt.constants import ViewerEnum, NodePropWidgetEnum
+from NodeGraphQt.constants import NodePropWidgetEnum
 
 from . import entity
 
@@ -192,5 +192,5 @@ class ObjectNode(SampleNode):
     def __init__(self):
         super(ObjectNode, self).__init__()
         # self.add_text_input('station', tab='widgets')
-        # self.create_property('station', "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
+        self.create_property('station', "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
         

@@ -16,11 +16,11 @@ class BuiltinNode(SampleNode):
 
 class DoubleSpinBoxWidget(NodeBaseWidget):
 
-    def __init__(self, parent=None, name='', label=''):
+    def __init__(self, parent=None, name='', label='', minimum=-999, maximum=+999):
         super(DoubleSpinBoxWidget, self).__init__(parent, name, label)
         
         box = PySide2.QtWidgets.QDoubleSpinBox()
-        box.setRange(-1000, +1000)
+        box.setRange(minimum, maximum)
         box.setDecimals(0)
         self.set_custom_widget(box)
 
@@ -131,6 +131,44 @@ class DoubleSpinBoxWidget(NodeBaseWidget):
 #         self.set_property("mywidget", str(value), push_undo=False)
 #         return {}
 
+class GroupNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Group"
+
+    def __init__(self):
+        super(GroupNode, self).__init__()
+
+        widget = DoubleSpinBoxWidget(self.view, name="ninputs", minimum=1, maximum=10)
+        widget.get_custom_widget().valueChanged.connect(self.on_value_changed)
+        self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+
+        self.set_port_deletion_allowed(True)
+
+        self._add_input("in1", entity.Data)
+        self._add_output("value", entity.Data)
+        # self.set_io_mapping("value", "in1")
+    
+    def execute(self, input_tokens):
+        ninputs = int(self.get_property("ninputs"))
+        value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
+        return {"value": {"value": value, "traits": entity.Data}}
+    
+    def on_value_changed(self, *args, **kwargs):
+        n = int(args[0])
+        nports = len(self.input_ports())
+        if n > nports:
+            for i in range(nports, n):
+                self._add_input(f"in{i+1}", entity.Data)
+        elif n < nports:
+            for i in range(nports, n, -1):
+                name = f"in{i}"
+                port = self.get_input(name)
+                for another in port.connected_ports():
+                    port.disconnect_from(another)
+                self.delete_input(name)
+
 class IntegerNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -202,6 +240,23 @@ class RepeatNode(BuiltinNode):
         repeats = input_tokens["repeats"]["value"]
         return {"value": {"value": numpy.repeat(a, repeats), "traits": entity.Array}}
 
+class TileNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Tile"
+
+    def __init__(self):
+        super(TileNode, self).__init__()
+        self._add_input("a", entity.Array)
+        self._add_input("reps", entity.Integer)
+        self._add_output("value", entity.Array)
+    
+    def execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        reps = input_tokens["reps"]["value"]
+        return {"value": {"value": numpy.tile(a, reps), "traits": entity.Array}}
+
 class SumNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -243,11 +298,12 @@ class AddNode(BuiltinNode):
         self._add_input("a", entity.Data)
         self._add_input("b", entity.Data)
         self._add_output("value", entity.Data)
+        self.set_io_mapping("value", "a")
     
     def execute(self, input_tokens):
         a = input_tokens["a"]["value"]
         b = input_tokens["b"]["value"]
-        return {"value": {"value": a + b, "traits": entity.Data}}
+        return {"value": {"value": a + b, "traits": input_tokens["a"]["traits"]}}
 
 class SubNode(BuiltinNode):
 
@@ -260,11 +316,12 @@ class SubNode(BuiltinNode):
         self._add_input("a", entity.Data)
         self._add_input("b", entity.Data)
         self._add_output("value", entity.Data)
+        self.set_io_mapping("value", "a")
     
     def execute(self, input_tokens):
         a = input_tokens["a"]["value"]
         b = input_tokens["b"]["value"]
-        return {"value": {"value": a - b, "traits": entity.Data}}
+        return {"value": {"value": a - b, "traits": input_tokens["a"]["traits"]}}
 
 class DisplayNode(BuiltinNode):
 
