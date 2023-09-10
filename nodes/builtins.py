@@ -3,7 +3,13 @@ import numpy
 from NodeGraphQt import NodeBaseWidget
 from NodeGraphQt.constants import NodePropWidgetEnum
 
+
+from PySide2.QtGui import QPixmap
 import PySide2.QtWidgets
+
+from PySide2.QtGui import QImage
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 from nodes import SampleNode
 from . import entity
@@ -55,6 +61,43 @@ class DoubleSpinBoxWidget(NodeBaseWidget):
         if value != self.get_value():
             self.get_custom_widget().setValue(value)
             self.on_value_changed()
+
+class LabelWidget(NodeBaseWidget):
+
+    def __init__(self, parent=None, name='', label=''):
+        super(LabelWidget, self).__init__(parent, name, label)
+        
+        label = PySide2.QtWidgets.QLabel()
+        pixmap = QPixmap('C:\\Users\\kaizu\\Documents\\Python Scripts\\protocol_editor\\nodes\\cat.jpg')
+        label.setPixmap(pixmap)
+        self.set_custom_widget(label)
+
+        # connect up the signals & slots.
+        # self.wire_signals()
+
+    @property
+    def type_(self):
+        return 'LabelWidget'
+
+    def get_value(self):
+        """
+        Returns the widgets current text.
+
+        Returns:
+            str: current text.
+        """
+        return self.get_custom_widget().pixmap().toImage()
+
+    def set_value(self, img=''):
+        """
+        Sets the widgets current text.
+
+        Args:
+            text (str): new text.
+        """
+        pixmap = QPixmap(img)
+        self.get_custom_widget().setPixmap(pixmap)
+        self.on_value_changed()
 
 # class MyNodeLineEdit(NodeBaseWidget):
 
@@ -337,6 +380,37 @@ class DisplayNode(BuiltinNode):
     def execute(self, input_tokens):
         assert "in1" in input_tokens
         self.set_property("in1", str(input_tokens["in1"]))
+        return {}
+
+class ScatterNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Scatter"
+
+    def __init__(self):
+        super(ScatterNode, self).__init__()
+
+        widget = LabelWidget(self.view, name="plot")
+        self.add_custom_widget(widget)
+
+        self._add_input("x", entity.Array)
+        self._add_input("y", entity.Array)
+    
+    def execute(self, input_tokens):
+        x = input_tokens["x"]["value"]
+        y = input_tokens["y"]["value"]
+
+        fig = Figure(figsize=(2, 1.5))
+        canvas = FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        ax.plot(x, y, 'k.')
+        fig.tight_layout()
+        canvas.draw()
+        
+        width, height = fig.figbbox.width, fig.figbbox.height
+        img = QImage(canvas.buffer_rgba(), width, height, QImage.Format_ARGB32)
+        self.set_property("plot", img)
         return {}
         
 # class SwitchNode(BuiltinNode):
