@@ -28,6 +28,10 @@ class Any(Entity): pass
 
 class Data(Any): pass
 
+class Group(Data): pass
+
+class Scalar(Data): pass
+
 class Object(Any): pass
 
 class Tube(Object): pass
@@ -36,13 +40,16 @@ class Plate(Object): pass
 
 class Plate96(Plate): pass
 
-class Integer(Data): pass
+class Integer(Scalar): pass
+
+class Float(Scalar): pass
 
 class Array(Data): pass
 
 class Array96(Array): pass
 
 ArrayLike = Plate96 | Array
+Real = Integer | Float
 
 def get_categories():
     return {

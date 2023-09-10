@@ -10,6 +10,8 @@ import PySide2.QtWidgets
 from PySide2.QtGui import QImage
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+plt.style.use('dark_background')
 
 from nodes import SampleNode
 from . import entity
@@ -22,12 +24,12 @@ class BuiltinNode(SampleNode):
 
 class DoubleSpinBoxWidget(NodeBaseWidget):
 
-    def __init__(self, parent=None, name='', label='', minimum=-999, maximum=+999):
+    def __init__(self, parent=None, name='', label='', minimum=-999, maximum=+999, decimals=0):
         super(DoubleSpinBoxWidget, self).__init__(parent, name, label)
         
         box = PySide2.QtWidgets.QDoubleSpinBox()
         box.setRange(minimum, maximum)
-        box.setDecimals(0)
+        box.setDecimals(decimals)
         self.set_custom_widget(box)
 
         # connect up the signals & slots.
@@ -190,13 +192,13 @@ class GroupNode(BuiltinNode):
         self.set_port_deletion_allowed(True)
 
         self._add_input("in1", entity.Data)
-        self._add_output("value", entity.Data)
+        self._add_output("value", entity.Group)
         # self.set_io_mapping("value", "in1")
     
     def execute(self, input_tokens):
         ninputs = int(self.get_property("ninputs"))
         value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
-        return {"value": {"value": value, "traits": entity.Data}}
+        return {"value": {"value": value, "traits": entity.Group}}
     
     def on_value_changed(self, *args, **kwargs):
         n = int(args[0])
@@ -230,6 +232,24 @@ class IntegerNode(BuiltinNode):
     def execute(self, input_tokens):
         return {"value": {"value": int(self.get_property("value")), "traits": entity.Integer}}
 
+class FloatNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Float"
+
+    def __init__(self):
+        super(FloatNode, self).__init__()
+
+        widget = DoubleSpinBoxWidget(self.view, name="value", decimals=1)
+        self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+
+        self._add_output("value", entity.Float)
+        # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+    
+    def execute(self, input_tokens):
+        return {"value": {"value": float(self.get_property("value")), "traits": entity.Float}}
+
 class FullNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -239,13 +259,13 @@ class FullNode(BuiltinNode):
     def __init__(self):
         super(FullNode, self).__init__()
         self._add_input("size", entity.Integer)
-        self._add_input("fill_value", entity.Integer, True)
+        self._add_input("fill_value", entity.Real, True)
         self._add_output("value", entity.Array)
     
     def execute(self, input_tokens):
         fill_value = input_tokens["fill_value"]["value"] if "fill_value" in input_tokens else 0
         size = input_tokens["size"]["value"]
-        return {"value": {"value": numpy.full(size, fill_value), "traits": entity.Array}}
+        return {"value": {"value": numpy.full(size, fill_value, dtype=numpy.float64), "traits": entity.Array}}
 
 class RangeNode(BuiltinNode):
 
@@ -255,16 +275,35 @@ class RangeNode(BuiltinNode):
 
     def __init__(self):
         super(RangeNode, self).__init__()
-        self._add_input("start", entity.Integer, True)
-        self._add_input("stop", entity.Integer)
-        self._add_input("step", entity.Integer, True)
+        self._add_input("start", entity.Real, True)
+        self._add_input("stop", entity.Real)
+        self._add_input("step", entity.Real, True)
         self._add_output("value", entity.Array)
     
     def execute(self, input_tokens):
         start = input_tokens["start"]["value"] if "start" in input_tokens else 0
         stop = input_tokens["stop"]["value"]
         step = input_tokens["step"]["value"] if "step" in input_tokens else 1
-        return {"value": {"value": numpy.arange(start, stop, step), "traits": entity.Array}}
+        return {"value": {"value": numpy.arange(start, stop, step, dtype=numpy.float64), "traits": entity.Array}}
+
+class LinspaceNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Linspace"
+
+    def __init__(self):
+        super(LinspaceNode, self).__init__()
+        self._add_input("start", entity.Real, True)
+        self._add_input("stop", entity.Real, True)
+        self._add_input("num", entity.Integer)
+        self._add_output("value", entity.Array)
+    
+    def execute(self, input_tokens):
+        start = input_tokens["start"]["value"] if "start" in input_tokens else 0
+        stop = input_tokens["stop"]["value"] if "stop" in input_tokens else 1
+        num = input_tokens["num"]["value"]
+        return {"value": {"value": numpy.linspace(start, stop, num, dtype=numpy.float64), "traits": entity.Array}}
 
 class RepeatNode(BuiltinNode):
 
@@ -309,7 +348,7 @@ class SumNode(BuiltinNode):
     def __init__(self):
         super(SumNode, self).__init__()
         self._add_input("a", entity.Array)
-        self._add_output("value", entity.Integer)
+        self._add_output("value", entity.Float)
     
     def execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -395,16 +434,18 @@ class ScatterNode(BuiltinNode):
         self.add_custom_widget(widget)
 
         self._add_input("x", entity.Array)
-        self._add_input("y", entity.Array)
+        self._add_input("y", entity.Group)
+        # self._add_input("y", entity.Group | entity.Array)
     
     def execute(self, input_tokens):
         x = input_tokens["x"]["value"]
-        y = input_tokens["y"]["value"]
+        y = input_tokens["y"]["value"] if issubclass(input_tokens["y"]["traits"], entity.Group) else [input_tokens["y"]["value"]]
 
         fig = Figure(figsize=(2, 1.5))
         canvas = FigureCanvas(fig)
         ax = fig.add_subplot(111)
-        ax.plot(x, y, 'k.')
+        for yi in y:
+            ax.plot(x, yi, '.')
         fig.tight_layout()
         canvas.draw()
         
