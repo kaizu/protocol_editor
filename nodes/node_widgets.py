@@ -70,18 +70,22 @@ class LabelWidget(NodeBaseWidget):
         Returns:
             str: current text.
         """
-        return self.get_custom_widget().pixmap().toImage()
+        # return self.get_custom_widget().pixmap().toImage()
+        return ""
 
-    def set_value(self, img=''):
+    def set_value(self, text=''):
         """
         Sets the widgets current text.
 
         Args:
             text (str): new text.
         """
+        # self.on_value_changed()
+        pass
+
+    def set_image(self, img):
         pixmap = QPixmap(img)
         self.get_custom_widget().setPixmap(pixmap)
-        self.on_value_changed()
 
 class PushButtonWidget(NodeBaseWidget):
 

@@ -339,7 +339,7 @@ class ScatterNode(BuiltinNode):
         
         width, height = fig.figbbox.width, fig.figbbox.height
         img = QImage(canvas.buffer_rgba(), width, height, QImage.Format_ARGB32)
-        self.set_property("plot", img)
+        self.get_widget("plot").set_image(img)
         return {}
 
 # class TriggerNode(BuiltinNode):
