@@ -1,3 +1,7 @@
+from logging import getLogger
+
+logger = getLogger(__name__)
+
 import numpy
 
 from NodeGraphQt.constants import NodePropWidgetEnum
@@ -180,6 +184,24 @@ class TileNode(BuiltinNode):
         reps = input_tokens["reps"]["value"]
         return {"value": {"value": numpy.tile(a, reps), "traits": entity.Array}}
 
+class AsArray96Node(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "AsArray96"
+
+    def __init__(self):
+        super(AsArray96Node, self).__init__()
+        self._add_input("a", entity.Array)
+        self._add_output("value", entity.Array96)
+    
+    def execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        value = numpy.zeros(96, dtype=numpy.float64)
+        n = min(len(a), len(value))
+        value[: n] = a[: n]
+        return {"value": {"value": value, "traits": entity.Array96}}
+
 class SumNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -297,24 +319,70 @@ class ScatterNode(BuiltinNode):
         self.set_property("plot", img)
         return {}
 
-class TriggerNode(BuiltinNode):
+# class TriggerNode(BuiltinNode):
+
+#     __identifier__ = "builtins"
+
+#     NODE_NAME = "Trigger"
+
+#     def __init__(self):
+#         super(TriggerNode, self).__init__()
+
+#         widget = PushButtonWidget(self.view, name="value")
+#         # self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+#         self.add_custom_widget(widget)
+
+#         self._add_output("value", entity.Integer)
+#         # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+    
+#     def execute(self, input_tokens):
+#         return {"value": {"value": 0, "traits": entity.Trigger}}
+
+# import fluent.experiments
+
+class DispenseLiquid96WellsNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "Trigger"
+    NODE_NAME = "DispenseLiquid96Wells"
 
     def __init__(self):
-        super(TriggerNode, self).__init__()
+        super(DispenseLiquid96WellsNode, self).__init__()
 
-        widget = PushButtonWidget(self.view, name="value")
-        # self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
-        self.add_custom_widget(widget)
+        self._add_input("in1", entity.Plate96)
+        self._add_output("out1", entity.Plate96)
 
-        self._add_output("value", entity.Integer)
-        # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+        self._add_input("channel", entity.Integer, optional=True)
+        self._add_input("volume", entity.Array96)
     
     def execute(self, input_tokens):
-        return {"value": {"value": 0, "traits": entity.Trigger}}
+        data = input_tokens["volume"]["value"].astype(int)
+        channel = input_tokens["channel"]["value"] if "channel" in input_tokens else 0
+        params = {'data': data, 'channel': channel}
+        logger.info(f"DispenseLiquid96WellsNode execute with {str(params)}")
+        # _, opts = fluent.experiments.dispense_liquid_96wells(**params)
+        return {"out1": input_tokens["in1"].copy()}
+
+class ReadAbsorbance3ColorsNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "ReadAbsorbance3Colors"
+
+    def __init__(self):
+        super(ReadAbsorbance3ColorsNode, self).__init__()
+
+        self._add_input("in1", entity.Plate96)
+        self._add_output("out1", entity.Plate96)
+
+        self._add_output("value", entity.Group)
+    
+    def execute(self, input_tokens):
+        params = {}
+        logger.info(f"ReadAbsorbance3ColorsNode execute")
+        # (data, ), opts = fluent.experiments.read_absorbance_3colors(**params)
+        data = numpy.zeros((3, 96), dtype=numpy.float64)
+        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Group}}
 
 # class SwitchNode(BuiltinNode):
 

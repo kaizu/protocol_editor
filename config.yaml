@@ -40,6 +40,9 @@ node:
     output:
       out1: in1
       value1: Data
+  Plate96InputNode:
+    output:
+      out1: Plate96
   TubeInputNode:
     output:
       out1: Tube
@@ -59,6 +62,7 @@ model:
       - ObjectOutputNode
       - TubeInputNode
       - TubeOutputNode
+      - Plate96InputNode
     station2:
       - ObjectUniNode
       - MeasureNode
