@@ -83,6 +83,50 @@ class LabelWidget(NodeBaseWidget):
         self.get_custom_widget().setPixmap(pixmap)
         self.on_value_changed()
 
+class PushButtonWidget(NodeBaseWidget):
+
+    def __init__(self, parent=None, name='', label='', text="Push"):
+        super(PushButtonWidget, self).__init__(parent, name, label)
+        
+        button = PySide2.QtWidgets.QPushButton(text)
+        self.set_custom_widget(button)
+
+        # connect up the signals & slots.
+        self.wire_signals()
+
+    def wire_signals(self):
+        widget = self.get_custom_widget()
+        widget.clicked.connect(self.on_button_clicked)
+        # widget.valueChanged.connect(self.on_value_changed)
+
+    def on_button_clicked(self, *args, **kwargs):
+        print("Saluton!")
+    
+    @property
+    def type_(self):
+        return 'PushButtonWidget'
+
+    def get_value(self):
+        """
+        Returns the widgets current text.
+
+        Returns:
+            str: current text.
+        """
+        return ''
+
+    def set_value(self, value=''):
+        """
+        Sets the widgets current text.
+
+        Args:
+            text (str): new text.
+        """
+        if value != self.get_value():
+            # self.get_custom_widget().setValue(value)
+            # self.on_value_changed()
+            pass
+
 # class MyNodeLineEdit(NodeBaseWidget):
 
 #     def __init__(self, parent=None, name='', label='', text=''):

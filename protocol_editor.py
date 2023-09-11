@@ -23,7 +23,6 @@ from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 
 from nodes import NodeStatusEnum, SampleNode, ObjectNode
 import nodes.entity as entity
-# from nodes.builtins import SwitchNode, DisplayNode, Array96Node
 import nodes.builtins
 from simulator import Simulator
 

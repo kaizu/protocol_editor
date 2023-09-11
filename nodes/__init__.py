@@ -2,11 +2,9 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
 
-from enum import IntFlag, IntEnum, auto
+from enum import IntEnum, auto
 
-import numpy
-
-from Qt import QtGui, QtCore, QtWidgets
+from Qt import QtGui, QtCore
 
 from NodeGraphQt import BaseNode
 from NodeGraphQt.constants import NodePropWidgetEnum

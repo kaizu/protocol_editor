@@ -10,7 +10,7 @@ plt.style.use('dark_background')
 
 from nodes import SampleNode
 from . import entity
-from .node_widgets import DoubleSpinBoxWidget, LabelWidget
+from .node_widgets import DoubleSpinBoxWidget, LabelWidget, PushButtonWidget
 
 class BuiltinNode(SampleNode):
 
@@ -296,7 +296,26 @@ class ScatterNode(BuiltinNode):
         img = QImage(canvas.buffer_rgba(), width, height, QImage.Format_ARGB32)
         self.set_property("plot", img)
         return {}
-        
+
+class TriggerNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Trigger"
+
+    def __init__(self):
+        super(TriggerNode, self).__init__()
+
+        widget = PushButtonWidget(self.view, name="value")
+        # self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+        self.add_custom_widget(widget)
+
+        self._add_output("value", entity.Integer)
+        # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+    
+    def execute(self, input_tokens):
+        return {"value": {"value": 0, "traits": entity.Trigger}}
+
 # class SwitchNode(BuiltinNode):
 
 #     __identifier__ = "builtins"
