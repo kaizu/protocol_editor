@@ -202,6 +202,29 @@ class AsArray96Node(BuiltinNode):
         value[: n] = a[: n]
         return {"value": {"value": value, "traits": entity.Array96}}
 
+class ArrayViewNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "ArrayView"
+
+    def __init__(self):
+        super(ArrayViewNode, self).__init__()
+        self._add_input("a", entity.Array)
+        self._add_output("value", entity.Array)
+
+        self._add_input("start", entity.Integer, True)
+        self._add_input("stop", entity.Integer, True)
+        self._add_input("step", entity.Integer, True)
+    
+    def execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        start = input_tokens["start"]["value"] if "start" in input_tokens else None
+        stop = input_tokens["stop"]["value"] if "stop" in input_tokens else None
+        step = input_tokens["step"]["value"] if "step" in input_tokens else None
+        value = a[slice(start, stop, step)].copy()
+        return {"value": {"value": value, "traits": entity.Array}}
+
 class SumNode(BuiltinNode):
 
     __identifier__ = "builtins"
