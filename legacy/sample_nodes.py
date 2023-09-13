@@ -1,7 +1,7 @@
-from nodes import SampleNode
+from nodes import OFPNode
 
 
-class DataInputNode(SampleNode):
+class DataInputNode(OFPNode):
     """
     A node class with 1 output.
     """
@@ -17,7 +17,7 @@ class DataInputNode(SampleNode):
 
         self.add_data_output('out')
 
-class ObjectInputNode(SampleNode):
+class ObjectInputNode(OFPNode):
     """
     A node class with 1 output.
     """
@@ -33,7 +33,7 @@ class ObjectInputNode(SampleNode):
 
         self.add_object_output('out')
 
-class DataOutputNode(SampleNode):
+class DataOutputNode(OFPNode):
     """
     A node class with 1 input.
     """
@@ -49,7 +49,7 @@ class DataOutputNode(SampleNode):
 
         self.add_data_input('in')
 
-class ObjectOutputNode(SampleNode):
+class ObjectOutputNode(OFPNode):
     """
     A node class with 1 input.
     """
@@ -65,7 +65,7 @@ class ObjectOutputNode(SampleNode):
 
         self.add_object_input('in')
 
-class ObjectUniNode(SampleNode):
+class ObjectUniNode(OFPNode):
     """
     A node class with 1 input and 1 output.
     """
@@ -82,7 +82,7 @@ class ObjectUniNode(SampleNode):
         self.add_object_input('in')
         self.add_object_output('out')
 
-class DataUniNode(SampleNode):
+class DataUniNode(OFPNode):
     """
     A node class with 1 input and 1 output.
     """
@@ -99,7 +99,7 @@ class DataUniNode(SampleNode):
         self.add_data_input('in')
         self.add_data_output('out')
 
-class ObjectBiNode(SampleNode):
+class ObjectBiNode(OFPNode):
     """
     A node class with 2 input and 2 output.
     """
@@ -118,7 +118,7 @@ class ObjectBiNode(SampleNode):
         self.add_object_output('out1')
         self.add_object_output('out2')
 
-class MeasurementNode(SampleNode):
+class MeasurementNode(OFPNode):
     """
     A node class with 1 input and 2 output.
     """

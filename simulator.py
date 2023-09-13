@@ -4,7 +4,7 @@ import datetime
 import itertools
 import uuid
 
-from nodes import SampleNode, ObjectNode, NodeStatusEnum
+from nodes import OFPNode, ObjectNode, NodeStatusEnum
 import nodes.entity as entity
 from nodes.builtins import BuiltinNode
 
@@ -20,7 +20,7 @@ class Simulator:
         self.__results = {}
         self.__tokens = {}
 
-    def _execute(self, node: SampleNode, input_tokens: dict[str, object]) -> list[dict[tuple[str, str], object]]:
+    def _execute(self, node: OFPNode, input_tokens: dict[str, object]) -> list[dict[tuple[str, str], object]]:
         try:
             output_tokens = node.execute(input_tokens)
         except NotImplementedError as err:
@@ -44,7 +44,7 @@ class Simulator:
                 output_tokens[output.name()] = value
         return output_tokens
 
-    def execute(self, node: SampleNode) -> NodeStatusEnum:
+    def execute(self, node: OFPNode) -> NodeStatusEnum:
         new_status = NodeStatusEnum.DONE
 
         input_tokens = {
@@ -62,7 +62,7 @@ class Simulator:
         logger.debug("execute %s", self.__results)
         return new_status
 
-    def run(self, node: SampleNode) -> NodeStatusEnum:
+    def run(self, node: OFPNode) -> NodeStatusEnum:
         logger.info('run %s', node)
         self.__scheduler[node.name] = datetime.datetime.now()
 
@@ -79,7 +79,7 @@ class Simulator:
         #         del self.__tokens[key]
         return NodeStatusEnum.RUNNING
     
-    def get_status(self, node: SampleNode) -> NodeStatusEnum:
+    def get_status(self, node: OFPNode) -> NodeStatusEnum:
         logger.info('get_status %s', node)
         if node.name not in self.__scheduler:
             return NodeStatusEnum.ERROR
@@ -91,7 +91,7 @@ class Simulator:
             return self.execute(node)
         return NodeStatusEnum.RUNNING
 
-    def transmit_token(self, node: SampleNode) -> NodeStatusEnum:
+    def transmit_token(self, node: OFPNode) -> NodeStatusEnum:
         logger.info('transmit_token %s', node)
         for output in node.output_ports():
             key = (node.name(), output.name())
@@ -108,7 +108,7 @@ class Simulator:
             if send:
                 del self.__tokens[key]
 
-    def reset_token(self, node: SampleNode):
+    def reset_token(self, node: OFPNode):
         for port in itertools.chain(node.input_ports(), node.output_ports()):
             key = (node.name(), port.name())
             if key in self.__tokens:

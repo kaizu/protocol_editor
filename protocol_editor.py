@@ -21,7 +21,8 @@ from NodeGraphQt import (
 )
 from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 
-from nodes import NodeStatusEnum, SampleNode, ObjectNode, evaluate_traits
+from nodes import NodeStatusEnum, OFPNode, ObjectNode, evaluate_traits
+from nodes.group import OFPGroupNode, ForEachNode
 import nodes.entity as entity
 import nodes.builtins
 from simulator import Simulator
@@ -35,14 +36,14 @@ def run_session(graph):
 
 def reset_session(graph):
     logger.info("reset_session")
-    all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
+    all_nodes = (node for node in graph.all_nodes() if isinstance(node, (OFPNode, OFPGroupNode)))
     for node in all_nodes:
         if node.get_property('status') in (NodeStatusEnum.DONE.value, NodeStatusEnum.WAITING.value):
             node.set_property('status', NodeStatusEnum.READY.value)
 
 def verify_session(graph):
     logger.info("verify_session")
-    all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
+    all_nodes = (node for node in graph.all_nodes() if isinstance(node, (OFPNode, OFPGroupNode)))
     for node in all_nodes:
         is_valid = True
 
@@ -92,7 +93,7 @@ def counter(graph):
     sim = graph.simulator
     all_nodes = [
         node for node in graph.all_nodes()
-        if isinstance(node, SampleNode)
+        if isinstance(node, (OFPNode, OFPGroupNode))
     ]
     running = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.RUNNING.value]
     waiting = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.WAITING.value]
@@ -131,7 +132,7 @@ class MyModel:
         return list(self.__stations.keys())
     
     def allocate_station(self, node):
-        if not isinstance(node, SampleNode):
+        if not isinstance(node, OFPNode):
             return ""
         class_name = node.__class__.__name__
         for key, value in self.__stations.items():
@@ -154,7 +155,7 @@ def declare_node(name, doc):
             else:
                 if entity.is_subclass_of(traits, entity.Object):
                     return ObjectNode
-        return SampleNode
+        return OFPNode
     
     base_cls = base_node_class(doc)
 
@@ -220,7 +221,7 @@ class MyNodeGraph(NodeGraph):
             #     if not self.__mymodel.has_property(name):
             #         self.set_property(name, True)
             node.update_property()
-        elif isinstance(node, SampleNode):
+        elif isinstance(node, (OFPNode, OFPGroupNode)):
             node.update_color()
         verify_session(self)
 
@@ -229,7 +230,7 @@ class MyNodeGraph(NodeGraph):
         if isinstance(node, GraphPropertyNode) and self.__mymodel.has_property(name):
             self.set_property(name, value)
             verify_session(self)
-        elif isinstance(node, SampleNode) and name == "status":
+        elif isinstance(node, (OFPNode, OFPGroupNode)) and name == "status":
             node.update_color()
             if value != NodeStatusEnum.DONE.value:
                 self.simulator.reset_token(node)
@@ -252,8 +253,8 @@ class MyNodeGraph(NodeGraph):
 
         for node in self.all_nodes():
             logger.info('node {}'.format(node))
-            if not isinstance(node, SampleNode):
-                logger.info('This is not an instance of SampleNode.')
+            if not isinstance(node, (OFPNode, OFPGroupNode)):
+                logger.info('This is not an instance of OFPNode.')
                 continue
             if node.get_property('status') != NodeStatusEnum.READY.value:
                 logger.info('Status is not READY. {}'.format(node.get_property('status')))
@@ -345,8 +346,6 @@ if __name__ == '__main__':
 
     # set up context menu for the node graph.
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
-
-    from nodes.group import ForEachNode
 
     graph.register_nodes([
         ConfigNode,

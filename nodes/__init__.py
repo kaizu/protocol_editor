@@ -110,7 +110,7 @@ def ofp_node_base(cls):
         def set_io_mapping(self, output_port_name, expression):
             assert output_port_name in self.outputs(), output_port_name
             # assert input_port_name in self.inputs(), input_port_name
-            # input_traits = super(SampleNode, self).get_port_traits(input_port_name)
+            # input_traits = super(OFPNode, self).get_port_traits(input_port_name)
             # if not entity.is_subclass_of(input_traits, entity.Data):
             #     assert (
             #         output_port_name in self.__io_mapping
@@ -144,19 +144,10 @@ def ofp_node_base(cls):
             return self.__port_traits[name][0]
     return _BasicNode
 
-class SampleNode(ofp_node_base(BaseNode)):
-    """
-    A node base class.
-    """
-
-    # unique node identifier.
-    __identifier__ = 'nodes.sample'
-
-    # initial default node name.
-    NODE_NAME = 'Sample'
+class OFPNode(ofp_node_base(BaseNode)):
 
     def __init__(self):
-        super(SampleNode, self).__init__()
+        super(OFPNode, self).__init__()
 
         self.create_property('status', NodeStatusEnum.ERROR)
         # self.add_text_input('_status', tab='widgets')
@@ -193,7 +184,7 @@ class SampleNode(ofp_node_base(BaseNode)):
         else:
             raise NotImplementedError()
 
-class ObjectNode(SampleNode):
+class ObjectNode(OFPNode):
 
     def __init__(self):
         super(ObjectNode, self).__init__()

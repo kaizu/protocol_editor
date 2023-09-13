@@ -12,11 +12,11 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
-from nodes import SampleNode
+from nodes import OFPNode
 from . import entity
 from .node_widgets import DoubleSpinBoxWidget, LabelWidget, PushButtonWidget
 
-class BuiltinNode(SampleNode):
+class BuiltinNode(OFPNode):
 
     def execute(self, sim):
         raise NotImplementedError("Override this")

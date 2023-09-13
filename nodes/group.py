@@ -12,7 +12,40 @@ from NodeGraphQt import GroupNode
 logger = getLogger(__name__)
 
 
-class ForEachNode(ofp_node_base(GroupNode)):
+class OFPGroupNode(ofp_node_base(GroupNode)):
+
+    def __init__(self):
+        super(OFPGroupNode, self).__init__()
+
+        self.create_property('status', NodeStatusEnum.ERROR)
+        # self.add_text_input('_status', tab='widgets')
+
+    def update_color(self):
+        logger.info("update_color %s", self)
+
+        value = self.get_property('status')
+        if value == NodeStatusEnum.READY.value:
+            self.set_color(13, 18, 23)
+        elif value == NodeStatusEnum.ERROR.value:
+            self.set_color(63, 18, 23)
+        elif value == NodeStatusEnum.WAITING.value:
+            self.set_color(63, 68, 73)
+        elif value == NodeStatusEnum.RUNNING.value:
+            self.set_color(13, 18, 73)
+        elif value == NodeStatusEnum.DONE.value:
+            self.set_color(13, 68, 23)
+        else:
+            assert False, "Never reach here {}".format(value)
+        
+        # subgraph = self.get_sub_graph()
+        # if subgraph is not None:
+        #     for node in subgraph.all_nodes():
+        #         # print(f"{self.name()}: {node.name()}")
+        #         pass
+
+        # self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
+
+class ForEachNode(OFPGroupNode):
 
     __identifier__ = 'builtins'
 
