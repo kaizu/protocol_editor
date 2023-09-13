@@ -24,22 +24,6 @@ class OFPGroupNode(ofp_node_base(GroupNode)):
         self.create_property('status', NodeStatusEnum.ERROR)
         # self.add_text_input('_status', tab='widgets')
 
-    #FIXME: This overload is a monkey patch to avoid a problem in NodeGraphQt.
-    def delete_input(self, port):
-        if type(port) in [int, str]:
-            #XXX: port = self.get_output(port)
-            port = self.get_input(port)
-            if port is None:
-                return
-
-        if self.is_expanded:
-            sub_graph = self.get_sub_graph()
-            port_node = sub_graph.get_node_by_port(port)
-            if port_node:
-                sub_graph.remove_node(port_node, push_undo=False)
-
-        super(GroupNode, self).delete_input(port)
-
     def update_color(self):
         logger.info("update_color %s", self)
 
