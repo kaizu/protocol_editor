@@ -125,6 +125,10 @@ def ofp_node_base(cls):
         def has_io_mapping(self, name):
             return name in self.__io_mapping
         
+        def delete_io_mapping(self, name):
+            assert name in self.__io_mapping
+            del self.__io_mapping[name]
+
         def io_mapping(self):
             return self.__io_mapping.copy()
 
