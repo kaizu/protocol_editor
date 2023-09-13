@@ -346,8 +346,11 @@ if __name__ == '__main__':
     # set up context menu for the node graph.
     graph.set_context_menu_from_file('hotkeys/hotkeys.json')
 
+    from nodes.group import ForEachNode
+
     graph.register_nodes([
         ConfigNode,
+        ForEachNode,
     ])
 
     graph.register_nodes([
