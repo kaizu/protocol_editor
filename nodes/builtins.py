@@ -37,13 +37,14 @@ class GroupNode(BuiltinNode):
         self.set_port_deletion_allowed(True)
 
         self._add_input("in1", entity.Data)
-        self._add_output("value", entity.Group)
-        # self.set_io_mapping("value", "in1")
-    
+        self._add_output("value", entity.Group[entity.Data])
+        self.set_io_mapping("value", "Group[in1]")
+
     def execute(self, input_tokens):
         ninputs = int(self.get_property("ninputs"))
         value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
-        return {"value": {"value": value, "traits": entity.Group}}
+        traits = input_tokens["in1"]["traits"]  # The first element
+        return {"value": {"value": value, "traits": entity.Group[traits]}}
     
     def on_value_changed(self, *args, **kwargs):
         n = int(args[0])
@@ -105,12 +106,12 @@ class FullNode(BuiltinNode):
         super(FullNode, self).__init__()
         self._add_input("size", entity.Integer)
         self._add_input("fill_value", entity.Real, True)
-        self._add_output("value", entity.Array)
+        self._add_output("value", entity.Array[entity.Float])
     
     def execute(self, input_tokens):
         fill_value = input_tokens["fill_value"]["value"] if "fill_value" in input_tokens else 0
         size = input_tokens["size"]["value"]
-        return {"value": {"value": numpy.full(size, fill_value, dtype=numpy.float64), "traits": entity.Array}}
+        return {"value": {"value": numpy.full(size, fill_value, dtype=numpy.float64), "traits": entity.Array[entity.Float]}}
 
 class RangeNode(BuiltinNode):
 
@@ -123,13 +124,13 @@ class RangeNode(BuiltinNode):
         self._add_input("start", entity.Real, True)
         self._add_input("stop", entity.Real)
         self._add_input("step", entity.Real, True)
-        self._add_output("value", entity.Array)
+        self._add_output("value", entity.Array[entity.Float])
     
     def execute(self, input_tokens):
         start = input_tokens["start"]["value"] if "start" in input_tokens else 0
         stop = input_tokens["stop"]["value"]
         step = input_tokens["step"]["value"] if "step" in input_tokens else 1
-        return {"value": {"value": numpy.arange(start, stop, step, dtype=numpy.float64), "traits": entity.Array}}
+        return {"value": {"value": numpy.arange(start, stop, step, dtype=numpy.float64), "traits": entity.Array[entity.Float]}}
 
 class LinspaceNode(BuiltinNode):
 
@@ -142,13 +143,13 @@ class LinspaceNode(BuiltinNode):
         self._add_input("start", entity.Real, True)
         self._add_input("stop", entity.Real, True)
         self._add_input("num", entity.Integer)
-        self._add_output("value", entity.Array)
+        self._add_output("value", entity.Array[entity.Float])
     
     def execute(self, input_tokens):
         start = input_tokens["start"]["value"] if "start" in input_tokens else 0
         stop = input_tokens["stop"]["value"] if "stop" in input_tokens else 1
         num = input_tokens["num"]["value"]
-        return {"value": {"value": numpy.linspace(start, stop, num, dtype=numpy.float64), "traits": entity.Array}}
+        return {"value": {"value": numpy.linspace(start, stop, num, dtype=numpy.float64), "traits": entity.Array[entity.Float]}}
 
 class RepeatNode(BuiltinNode):
 
@@ -161,11 +162,12 @@ class RepeatNode(BuiltinNode):
         self._add_input("a", entity.Array)
         self._add_input("repeats", entity.Integer)
         self._add_output("value", entity.Array)
+        self.set_io_mapping("value", "a")
     
     def execute(self, input_tokens):
         a = input_tokens["a"]["value"]
         repeats = input_tokens["repeats"]["value"]
-        return {"value": {"value": numpy.repeat(a, repeats), "traits": entity.Array}}
+        return {"value": {"value": numpy.repeat(a, repeats), "traits": input_tokens["a"]["traits"]}}
 
 class TileNode(BuiltinNode):
 
@@ -178,40 +180,24 @@ class TileNode(BuiltinNode):
         self._add_input("a", entity.Array)
         self._add_input("reps", entity.Integer)
         self._add_output("value", entity.Array)
+        self.set_io_mapping("value", "a")
     
     def execute(self, input_tokens):
         a = input_tokens["a"]["value"]
         reps = input_tokens["reps"]["value"]
-        return {"value": {"value": numpy.tile(a, reps), "traits": entity.Array}}
+        return {"value": {"value": numpy.tile(a, reps), "traits": input_tokens["a"]["traits"]}}
 
-class AsArray96Node(BuiltinNode):
-
-    __identifier__ = "builtins"
-
-    NODE_NAME = "AsArray96"
-
-    def __init__(self):
-        super(AsArray96Node, self).__init__()
-        self._add_input("a", entity.Array)
-        self._add_output("value", entity.Array96)
-    
-    def execute(self, input_tokens):
-        a = input_tokens["a"]["value"]
-        value = numpy.zeros(96, dtype=numpy.float64)
-        n = min(len(a), len(value))
-        value[: n] = a[: n]
-        return {"value": {"value": value, "traits": entity.Array96}}
-
-class ArrayViewNode(BuiltinNode):
+class SliceNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "ArrayView"
+    NODE_NAME = "Slice"
 
     def __init__(self):
-        super(ArrayViewNode, self).__init__()
+        super(SliceNode, self).__init__()
         self._add_input("a", entity.Array)
         self._add_output("value", entity.Array)
+        self.set_io_mapping("value", "a")
 
         self._add_input("start", entity.Integer, True)
         self._add_input("stop", entity.Integer, True)
@@ -223,7 +209,7 @@ class ArrayViewNode(BuiltinNode):
         stop = input_tokens["stop"]["value"] if "stop" in input_tokens else None
         step = input_tokens["step"]["value"] if "step" in input_tokens else None
         value = a[slice(start, stop, step)].copy()
-        return {"value": {"value": value, "traits": entity.Array}}
+        return {"value": {"value": value, "traits": input_tokens["a"]["traits"]}}
 
 class SumNode(BuiltinNode):
 
@@ -233,12 +219,12 @@ class SumNode(BuiltinNode):
 
     def __init__(self):
         super(SumNode, self).__init__()
-        self._add_input("a", entity.Array)
-        self._add_output("value", entity.Float)
+        self._add_input("a", entity.Array[entity.Real])
+        self._add_output("value", entity.Float)  #FIXME: entity.Real
     
     def execute(self, input_tokens):
         a = input_tokens["a"]["value"]
-        return {"value": {"value": numpy.sum(a), "traits": entity.Integer}}
+        return {"value": {"value": float(numpy.sum(a)), "traits": entity.Float}}
 
 class LengthNode(BuiltinNode):
 
@@ -321,13 +307,14 @@ class ScatterNode(BuiltinNode):
 
         self._add_input("scale", entity.Float, optional=True)
         self._add_input("x", entity.Array)
-        self._add_input("y", entity.Group)
+        self._add_input("y", entity.Group[entity.Array])
         # self._add_input("y", entity.Group | entity.Array)
     
     def execute(self, input_tokens):
         scale = input_tokens["scale"]["value"] if "scale" in input_tokens else 0.25
         x = input_tokens["x"]["value"]
-        y = input_tokens["y"]["value"] if issubclass(input_tokens["y"]["traits"], entity.Group) else [input_tokens["y"]["value"]]
+        # y = input_tokens["y"]["value"] if issubclass(input_tokens["y"]["traits"], entity.Group) else [input_tokens["y"]["value"]]
+        y = input_tokens["y"]["value"]
 
         fig = Figure(figsize=(8 * scale, 6 * scale))
         canvas = FigureCanvas(fig)
@@ -376,10 +363,10 @@ class DispenseLiquid96WellsNode(BuiltinNode):
         self._add_output("out1", entity.Plate96)
 
         self._add_input("channel", entity.Integer, optional=True)
-        self._add_input("volume", entity.Array96)
+        self._add_input("volume", entity.Array[entity.Real])
     
     def execute(self, input_tokens):
-        data = input_tokens["volume"]["value"].astype(int)
+        data = input_tokens["volume"]["value"].astype(int).resize(96)
         channel = input_tokens["channel"]["value"] if "channel" in input_tokens else 0
         params = {'data': data, 'channel': channel}
         logger.info(f"DispenseLiquid96WellsNode execute with {str(params)}")
@@ -398,14 +385,14 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
         self._add_input("in1", entity.Plate96)
         self._add_output("out1", entity.Plate96)
 
-        self._add_output("value", entity.Group)
+        self._add_output("value", entity.Group[entity.Array[entity.Float]])
     
     def execute(self, input_tokens):
         params = {}
         logger.info(f"ReadAbsorbance3ColorsNode execute")
         # (data, ), opts = fluent.experiments.read_absorbance_3colors(**params)
         data = numpy.zeros((3, 96), dtype=numpy.float64)
-        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Group}}
+        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Group[entity.Array[entity.Float]]}}
 
 # class SwitchNode(BuiltinNode):
 

@@ -56,9 +56,6 @@ class LabelWidget(NodeBaseWidget):
         label.setPixmap(pixmap)
         self.set_custom_widget(label)
 
-        # connect up the signals & slots.
-        # self.wire_signals()
-
     @property
     def type_(self):
         return 'LabelWidget'

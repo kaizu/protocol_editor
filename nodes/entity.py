@@ -1,5 +1,6 @@
 import inspect
 import types
+import typing
 import importlib
 
 class Entity:
@@ -12,23 +13,72 @@ def is_category(cls):
         if issubclass(cls, Entity):
             return True
     elif isinstance(cls, types.UnionType):
-        if all(issubclass(x, Entity) for x in cls.__args__):
+        if all(is_category(x) for x in cls.__args__):
+            return True
+    elif isinstance(cls, typing._GenericAlias):
+        if inspect.isclass(cls.__origin__) and issubclass(cls.__origin__, Entity) and all(is_category(x) for x in cls.__args__):
             return True
     return False
 
-def is_subclass_of(one, another):
+def _is_acceptable(one, another):
+    # print(f"_is_acceptable: {one}, {another}")
+    assert inspect.isclass(another)
     if inspect.isclass(one):
         assert issubclass(one, Entity)
         return issubclass(one, another)
+    elif isinstance(one, typing._GenericAlias):
+        assert isinstance(one, typing._GenericAlias)
+        assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity)
+        return issubclass(one.__origin__, another)
+    elif isinstance(one, types.UnionType):
+        return all(_is_acceptable(x, another) for x in one.__args__)
     else:
-        assert isinstance(one, types.UnionType)
-        return all(issubclass(x, another) for x in one.__args__)
+        assert False, f"Never reach here [{type(one)}]"
+
+def is_acceptable(one, another):
+    if inspect.isclass(another):
+        assert issubclass(another, Entity)
+        return _is_acceptable(one, another)
+    elif isinstance(another, typing._GenericAlias):
+        if isinstance(one, typing._GenericAlias):
+            return (
+                _is_acceptable(one, another.__origin__)
+                and len(one.__args__) == len(another.__args__)
+                and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
+            )
+        else:
+            return False
+    elif isinstance(another, types.UnionType):
+        return any(_is_acceptable(one, x) for x in another.__args__)
+    else:
+        assert False, "Never reach here"
+
+is_subclass_of = is_acceptable
+# def is_subclass_of(one, another):
+#     if not isinstance(another, typing._GenericAlias):
+#         if inspect.isclass(one):
+#             assert issubclass(one, Entity)
+#             return issubclass(one, another)
+#         elif isinstance(one, types.UnionType):
+#             return all(issubclass(x, another) for x in one.__args__)
+#         else:
+#             assert isinstance(one, typing._GenericAlias)
+#             return issubclass(one.__origin__, another)
+#     else:
+#         if inspect.isclass(one):
+#             assert issubclass(one, Entity)
+#             raise NotImplementedError()
+#         elif isinstance(one, types.UnionType):
+#             raise NotImplementedError()
+#         else:
+#             assert isinstance(one, typing._GenericAlias)
+#             raise NotImplementedError()
 
 class Any(Entity): pass
 
 class Data(Any): pass
 
-class Group(Data): pass
+class Group(Data, typing.Generic[typing.TypeVar("T")]): pass
 
 class Scalar(Data): pass
 
@@ -44,9 +94,9 @@ class Integer(Scalar): pass
 
 class Float(Scalar): pass
 
-class Array(Data): pass
+class Array(Data, typing.Generic[typing.TypeVar("T")]): pass
 
-class Array96(Array): pass
+# class Array96(Array): pass
 
 ArrayLike = Plate96 | Array
 Real = Integer | Float
@@ -59,19 +109,25 @@ def get_categories():
     }
 
 if __name__ == "__main__":
-    print(is_subclass_of(Array96, Any))
-    print(is_subclass_of(Array96, Data))
-    print(is_subclass_of(Array96, Object))
-    print(is_subclass_of(Array96, ArrayLike))
+    print(is_subclass_of(Array, Any))
+    print(is_subclass_of(Array, Data))
+    print(is_subclass_of(Array, Object))
+    print(is_subclass_of(Array, ArrayLike))
     print(is_subclass_of(ArrayLike, Array))
 
-    print(Array96, is_category(Array96))
-    print(ArrayLike, is_category(ArrayLike))
-    print(ArrayLike | Tube, is_category(ArrayLike | int))
+    print(is_subclass_of(Group[Array], Group))
+    print(is_subclass_of(Group[Array], Group[Array]))
+    print(is_subclass_of(Group[Array], Group[ArrayLike]))
+    print(is_subclass_of(Group[Array], Group[Array]))
+    print(is_subclass_of(Group, Group))
 
-    try:
-        a = Array96()
-    except RuntimeError as err:
-        print(err.args)
+    # print(Array96, is_category(Array96))
+    # print(ArrayLike, is_category(ArrayLike))
+    # print(ArrayLike | Tube, is_category(ArrayLike | int))
 
-    print(get_categories())
+    # try:
+    #     a = Array96()
+    # except RuntimeError as err:
+    #     print(err.args)
+
+    # print(get_categories())

@@ -29,7 +29,11 @@ class Simulator:
             for output in node.output_ports():
                 traits = node.get_port_traits(output.name())
                 if output.name() in node.io_mapping():
-                    value = input_tokens[node.io_mapping()[output.name()]]
+                    traits_str = node.io_mapping()[output.name()]
+                    if traits_str in input_tokens:
+                        value = input_tokens[traits_str]
+                    else:
+                        raise NotImplementedError(f"No default behavior for traits [{traits_str}]")
                 else:
                     if entity.is_subclass_of(traits, entity.Data):
                         value = {'value': 100, 'traits': traits}

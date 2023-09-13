@@ -21,7 +21,7 @@ from NodeGraphQt import (
 )
 from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 
-from nodes import NodeStatusEnum, SampleNode, ObjectNode
+from nodes import NodeStatusEnum, SampleNode, ObjectNode, evaluate_traits
 import nodes.entity as entity
 import nodes.builtins
 from simulator import Simulator
@@ -142,14 +142,13 @@ class MyModel:
 
 def declare_node(name, doc):
     def base_node_class(doc):
-        params = entity.get_categories()
         for _, traits_str in doc.get('input', {}).items():
-            traits = eval(traits_str, {}, params)
+            traits, _ = evaluate_traits(traits_str)
             if entity.is_subclass_of(traits, entity.Object):
                 return ObjectNode
         for _, traits_str in doc.get('output', {}).items():
             try:
-                traits = eval(traits_str, {}, params)
+                traits, _ = evaluate_traits(traits_str)
             except:
                 pass  # io_mapping
             else:
@@ -165,17 +164,21 @@ def declare_node(name, doc):
         input_traits = {}
         params = entity.get_categories()
         for port_name, traits_str in doc.get('input', {}).items():
-            traits = eval(traits_str, {}, params)
+            traits, _ = evaluate_traits(traits_str)
             input_traits[port_name] = traits
             self._add_input(port_name, traits)
         for port_name, traits_str in doc.get('output', {}).items():
-            if traits_str in input_traits:
-                traits = input_traits[traits_str]
-                self._add_output(port_name, traits)
+            traits, is_static = evaluate_traits(traits_str, input_traits)
+            self._add_output(port_name, traits)
+            if not is_static:
                 self.set_io_mapping(port_name, traits_str)
-            else:
-                traits = eval(traits_str, {}, params)
-                self._add_output(port_name, traits)
+            # if traits_str in input_traits:
+            #     traits = input_traits[traits_str]
+            #     self._add_output(port_name, traits)
+            #     self.set_io_mapping(port_name, traits_str)
+            # else:
+            #     traits = evaluate_traits(traits_str)
+            #     self._add_output(port_name, traits)
         for prop_name, value in doc.get('property', {}).items():
             assert not self.has_property(prop_name)
             self.create_property(prop_name, str(value), widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
