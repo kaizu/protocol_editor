@@ -72,7 +72,7 @@ def verify_session(graph):
                     (port.type_() == PortTypeEnum.IN.value and not entity.is_subclass_of(another_traits, port_traits))
                     or (port.type_() == PortTypeEnum.OUT.value and not entity.is_subclass_of(port_traits, another_traits))
                 ):
-                    logger.info("%s %s %s", port.type_(), port_traits, another_traits)
+                    logger.info("%s %s %s; %s %s %s", node.NODE_NAME, port.type_(), port_traits, another_port.node().NODE_NAME, another_port.type_(), another_traits)
                     is_valid = False
                     break
 
