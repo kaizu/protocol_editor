@@ -8,6 +8,7 @@ from Qt import QtGui, QtCore
 
 from NodeGraphQt import BaseNode
 from NodeGraphQt.constants import NodePropWidgetEnum
+from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
 from . import entity
 
@@ -127,17 +128,23 @@ def ofp_node_base(cls):
         def io_mapping(self):
             return self.__io_mapping.copy()
 
-        def __get_connected_traits(self, input_port):
+        def _get_connected_traits(self, input_port):
             for connected in input_port.connected_ports():
                 another = connected.node()
-                return another.get_port_traits(connected.name())
+                if isinstance(another, PortInputNode):
+                    parent_port = another.parent_port
+                    another_traits = parent_port.node()._get_connected_traits(parent_port)
+                    # print(f"{parent_port.node()} {another} {connected} {another_traits}")
+                    return another_traits
+                else:
+                    return another.get_port_traits(connected.name())
             return self.__port_traits[input_port.name()][0]
 
         def get_port_traits(self, name):
             #XXX: This impl would be too slow. Use cache
             if name in self.__io_mapping:
                 expression = self.__io_mapping[name]
-                input_traits = {input.name(): self.__get_connected_traits(input) for input in self.input_ports()}
+                input_traits = {input.name(): self._get_connected_traits(input) for input in self.input_ports()}
                 # print(f"{expression}: {input_traits}: {name}")
                 port_traits = evaluate_traits(expression, input_traits)[0]
                 return port_traits

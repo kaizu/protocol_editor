@@ -20,6 +20,7 @@ from NodeGraphQt import (
     # NodesPaletteWidget
 )
 from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
+from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
 from nodes import NodeStatusEnum, OFPNode, ObjectNode, evaluate_traits
 from nodes.group import OFPGroupNode, ForEachNode
@@ -47,10 +48,10 @@ def verify_session(graph):
     for node in all_nodes:
         is_valid = True
 
-        if isinstance(node, ObjectNode):
-            station = graph.allocate_station(node)
-            node.set_property("station", station, push_undo=False)
-            is_valid = is_valid and station != ""
+        # if isinstance(node, ObjectNode):
+        #     station = graph.allocate_station(node)
+        #     node.set_property("station", station, push_undo=False)
+        #     is_valid = is_valid and station != ""
 
         for port in itertools.chain(
             node.input_ports(), node.output_ports()
@@ -68,12 +69,23 @@ def verify_session(graph):
                     break
 
             for another_port in connected_ports:
-                another_traits = another_port.node().get_port_traits(another_port.name())
+                another = another_port.node()
+
+                if isinstance(another, PortInputNode):
+                    parent_port = another.parent_port
+                    another_traits = parent_port.node()._get_connected_traits(parent_port)
+                elif isinstance(another, PortOutputNode):
+                    parent_port = another.parent_port
+                    another_traits = parent_port.node().get_port_traits(parent_port.name())
+                else:
+                    assert isinstance(another, (OFPNode, OFPGroupNode))
+                    another_traits = another.get_port_traits(another_port.name())
+                
                 if (
-                    (port.type_() == PortTypeEnum.IN.value and not entity.is_subclass_of(another_traits, port_traits))
+                   (port.type_() == PortTypeEnum.IN.value and not entity.is_subclass_of(another_traits, port_traits))
                     or (port.type_() == PortTypeEnum.OUT.value and not entity.is_subclass_of(port_traits, another_traits))
                 ):
-                    logger.info("%s %s %s; %s %s %s", node.NODE_NAME, port.type_(), port_traits, another_port.node().NODE_NAME, another_port.type_(), another_traits)
+                    logger.info("%s %s %s; %s %s %s", node.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
                     is_valid = False
                     break
 
@@ -81,6 +93,11 @@ def verify_session(graph):
             node.set_property('status', NodeStatusEnum.ERROR.value, push_undo=False)
         elif node.get_property('status') == NodeStatusEnum.ERROR.value:
             node.set_property('status', NodeStatusEnum.READY.value, push_undo=False)
+
+        if isinstance(node, OFPGroupNode):
+            subgraph = node.get_sub_graph()
+            if subgraph is not None:
+                verify_session(subgraph)
 
     # logger.info(graph.serialize_session())
 
@@ -270,6 +287,21 @@ class MyNodeGraph(NodeGraph):
             session[node.NODE_NAME] = dependencies
 
         logger.info(session)
+    
+    def expand_group_node(self, node):
+        subgraph = super(MyNodeGraph, self).expand_group_node(node)
+        if subgraph is None:
+            return subgraph
+        
+        logger.info(f"Expand group node [{node.name()}]")
+
+        subgraph.node_created.connect(self._node_created)
+        subgraph.nodes_deleted.connect(self._updated)
+        subgraph.port_connected.connect(self._updated)
+        subgraph.port_disconnected.connect(self._updated)
+        subgraph.property_changed.connect(self._property_changed)
+
+        return subgraph
 
 class GraphPropertyNode(BaseNode):
 

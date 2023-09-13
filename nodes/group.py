@@ -57,7 +57,8 @@ class ForEachNode(OFPGroupNode):
         self.set_color(50, 8, 25)
 
         self._add_input('in1', entity.Object)
+        self._add_input('in2', entity.Data)
         self._add_output('out1', entity.Object)
         self.set_io_mapping('out1', 'in1')
-        print(f"in -> {self.get_port_traits('in1')}")
-        print(f"out -> {self.get_port_traits('out1')}")
+        print(f"in1 -> {self.get_port_traits('in1')}")
+        print(f"out1 -> {self.get_port_traits('out1')}")
