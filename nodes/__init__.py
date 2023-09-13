@@ -2,12 +2,15 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
 
-from enum import IntFlag, IntEnum, auto
+from enum import IntEnum, auto
 
-from Qt import QtGui, QtCore, QtWidgets
+from Qt import QtGui, QtCore
 
-from NodeGraphQt import BaseNode, NodeBaseWidget
-from NodeGraphQt.constants import ViewerEnum
+from NodeGraphQt import BaseNode
+from NodeGraphQt.constants import NodePropWidgetEnum
+from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
+
+from . import entity
 
 logger = getLogger(__name__)
 
@@ -53,57 +56,16 @@ def draw_square_port(painter, rect, info):
 
     painter.restore()
 
-class PortTraitsEnum(IntFlag):
-    DATA = auto()
-    TUBE = auto()
-    PLATE = auto()
-    OBJECT = TUBE | PLATE
-    ANY = DATA | OBJECT
-
-class BasicNode(BaseNode):
-    """
-    A base node for object flow programming.
-    """
-
-    NODE_NAME = 'BasicNode'
-
-    def __init__(self, qgraphics_item=None):
-        super(BasicNode, self).__init__(qgraphics_item)
-
-        self.__port_traits = {}
-
-    def get_port_traits(self, name):
-        return PortTraitsEnum(self.__port_traits[name])
-    
-    def _add_input(self, name, traits):
-        if traits in PortTraitsEnum.OBJECT:
-            self.add_input(name, multi_input=False, painter_func=draw_square_port)
-        elif traits in PortTraitsEnum.DATA:
-            self.add_input(name, color=(180, 80, 0), multi_input=False)
-        else:
-            assert False, 'Never reach here {}'.format(traits)
-        self.__port_traits[name] = traits.value
-
-    def _add_output(self, name, traits):
-        if traits in PortTraitsEnum.OBJECT:
-            self.add_output(name, multi_output=False, painter_func=draw_square_port)
-        elif traits in PortTraitsEnum.DATA:
-            self.add_output(name, color=(180, 80, 0), multi_output=True)
-        else:
-            assert False, 'Never reach here {}'.format(traits)
-        self.__port_traits[name] = traits.value
-
-    # def add_data_input(self, name, multi_input=False):
-    #     self._add_input(name, PortTraitsEnum.DATA, multi_input)
-
-    # def add_data_output(self, name, multi_output=True):
-    #     self._add_output(name, PortTraitsEnum.DATA, multi_output)
-
-    # def add_object_input(self, name, multi_input=False):
-    #     self._add_input(name, PortTraitsEnum.OBJECT, multi_input)
-
-    # def add_object_output(self, name, multi_output=False):
-    #     self._add_output(name, PortTraitsEnum.OBJECT, multi_output)
+def evaluate_traits(expression, inputs=None):
+    inputs = inputs or {}
+    params = entity.get_categories()
+    # print(f"inputs -> {inputs}")
+    # print(f"params -> {params}")
+    locals = dict(inputs, **params)
+    code = compile(expression, "<string>", "eval")
+    is_static = all(name in params for name in code.co_names)
+    assert all(name in locals for name in code.co_names)
+    return eval(expression, {"__builtins__": {}}, locals), is_static
 
 class NodeStatusEnum(IntEnum):
     READY = auto()
@@ -111,56 +73,96 @@ class NodeStatusEnum(IntEnum):
     WAITING = auto()
     RUNNING = auto()
     DONE = auto()
-    
-class SampleNode(BasicNode):
-    """
-    A node base class.
-    """
 
-    # unique node identifier.
-    __identifier__ = 'nodes.sample'
+def ofp_node_base(cls):
+    class _BasicNode(cls):
 
-    # initial default node name.
-    NODE_NAME = 'Sample'
+        def __init__(self, *args, **kwargs):
+            super(_BasicNode, self).__init__(*args, **kwargs)
+
+            self.__port_traits = {}
+            self.__io_mapping = {}
+
+        def is_optional_port(self, name):
+            return self.__port_traits[name][1]
+
+        def _add_input(self, name, traits, optional=False):
+            assert not optional or entity.is_subclass_of(traits, entity.Data)
+            if entity.is_subclass_of(traits, entity.Object):
+                self.add_input(name, multi_input=False, painter_func=draw_square_port)
+            elif entity.is_subclass_of(traits, entity.Data):
+                self.add_input(name, color=(180, 80, 0), multi_input=False)
+            else:
+                assert False, 'Never reach here {}'.format(traits)
+            self.__port_traits[name] = (traits, optional)
+
+        def _add_output(self, name, traits):
+            if entity.is_subclass_of(traits, entity.Object):
+                self.add_output(name, multi_output=False, painter_func=draw_square_port)
+            elif entity.is_subclass_of(traits, entity.Data):
+                self.add_output(name, color=(180, 80, 0), multi_output=True)
+            else:
+                assert False, 'Never reach here {}'.format(traits)
+            self.__port_traits[name] = (traits, False)
+
+        def execute(self, input_tokens):
+            raise NotImplementedError()
+        
+        def set_io_mapping(self, output_port_name, expression):
+            assert output_port_name in self.outputs(), output_port_name
+            # assert input_port_name in self.inputs(), input_port_name
+            # input_traits = super(OFPNode, self).get_port_traits(input_port_name)
+            # if not entity.is_subclass_of(input_traits, entity.Data):
+            #     assert (
+            #         output_port_name in self.__io_mapping
+            #         or sum(1 for name in self.__io_mapping.values() if name == input_port_name) == 0
+            #     ), "{} {} {}".format(output_port_name, input_port_name, input_traits)
+            self._set_io_mapping(output_port_name, expression)
+
+        def _set_io_mapping(self, output_port_name, expression):
+            self.__io_mapping[output_port_name] = expression
+        
+        def has_io_mapping(self, name):
+            return name in self.__io_mapping
+        
+        def delete_io_mapping(self, name):
+            assert name in self.__io_mapping
+            del self.__io_mapping[name]
+
+        def io_mapping(self):
+            return self.__io_mapping.copy()
+
+        def _get_connected_traits(self, input_port):
+            for connected in input_port.connected_ports():
+                another = connected.node()
+                if isinstance(another, PortInputNode):
+                    parent_port = another.parent_port
+                    another_traits = parent_port.node()._get_connected_traits(parent_port)
+                    # print(f"{parent_port.node()} {another} {connected} {another_traits}")
+                    return another_traits
+                else:
+                    return another.get_port_traits(connected.name())
+            return self.__port_traits[input_port.name()][0]
+
+        def get_port_traits(self, name):
+            #XXX: This impl would be too slow. Use cache
+            if name in self.__io_mapping:
+                expression = self.__io_mapping[name]
+                input_traits = {input.name(): self._get_connected_traits(input) for input in self.input_ports()}
+                # print(f"{expression}: {input_traits}: {name}")
+                port_traits = evaluate_traits(expression, input_traits)[0]
+                return port_traits
+            return self.__port_traits[name][0]
+    return _BasicNode
+
+class OFPNode(ofp_node_base(BaseNode)):
 
     def __init__(self):
-        super(SampleNode, self).__init__()
-
-        self.__io_mapping = {}
+        super(OFPNode, self).__init__()
 
         self.create_property('status', NodeStatusEnum.ERROR)
-        self.add_text_input('_status', tab='widgets')
+        # self.add_text_input('_status', tab='widgets')
 
-    def set_io_mapping(self, output_port_name, input_port_name):
-        assert output_port_name in self.outputs(), output_port_name
-        assert input_port_name in self.inputs(), input_port_name
-
-        input_traits = super(SampleNode, self).get_port_traits(input_port_name)
-        if input_traits not in PortTraitsEnum.DATA:
-            assert (
-                output_port_name in self.__io_mapping
-                or sum(1 for name in self.__io_mapping.values() if name == input_port_name) == 0
-            ), "{} {} {}".format(output_port_name, input_port_name, input_traits)
-
-        self._set_io_mapping(output_port_name, input_port_name)
-
-    def _set_io_mapping(self, output_port_name, input_port_name):
-        self.__io_mapping[output_port_name] = input_port_name
-    
-    def io_mapping(self):
-        return self.__io_mapping.copy()
-
-    def get_port_traits(self, name):
-        #XXX: This impl would be too slow. Use cache
-        if name in self.__io_mapping:
-            input = self.get_input(self.__io_mapping[name])
-            assert len(input.connected_ports()) <= 1
-            for connected in input.connected_ports():
-                another = connected.node()
-                assert isinstance(another, SampleNode)
-                return another.get_port_traits(connected.name())
-        return super(SampleNode, self).get_port_traits(name)
-    
     def update_color(self):
         logger.info("update_color %s", self)
 
@@ -178,11 +180,25 @@ class SampleNode(BasicNode):
         else:
             assert False, "Never reach here {}".format(value)
 
-        self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
+        # self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
 
-class ObjectNode(SampleNode):
+    def execute(self, input_tokens):
+        assert all(input.name() in input_tokens for input in self.input_ports())
+        if all(self.has_property(output.name()) for output in self.output_ports()):
+            #XXX: ast.literal_eval
+            return {
+                output.name(): {
+                    "value": eval(self.get_property(output.name()),{"__builtins__": None}, {}),
+                    "traits": self.get_port_traits(output.name())
+                }
+                for output in self.output_ports()}
+        else:
+            raise NotImplementedError()
+
+class ObjectNode(OFPNode):
 
     def __init__(self):
         super(ObjectNode, self).__init__()
-        self.add_text_input('station', tab='widgets')
+        # self.add_text_input('station', tab='widgets')
+        self.create_property('station', "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
         

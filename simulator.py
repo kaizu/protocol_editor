@@ -4,7 +4,8 @@ import datetime
 import itertools
 import uuid
 
-from nodes import SampleNode, ObjectNode, NodeStatusEnum, PortTraitsEnum
+from nodes import OFPNode, ObjectNode, NodeStatusEnum
+import nodes.entity as entity
 from nodes.builtins import BuiltinNode
 
 from logging import getLogger
@@ -19,29 +20,38 @@ class Simulator:
         self.__results = {}
         self.__tokens = {}
 
-    def _execute(self, node: SampleNode, input_tokens: dict[str, object]) -> list[dict[tuple[str, str], object]]:
-        if isinstance(node, BuiltinNode):
+    def _execute(self, node: OFPNode, input_tokens: dict[str, object]) -> list[dict[tuple[str, str], object]]:
+        try:
             output_tokens = node.execute(input_tokens)
-        else:
+        except NotImplementedError as err:
+            assert not isinstance(node, BuiltinNode)
             output_tokens = {}
             for output in node.output_ports():
                 traits = node.get_port_traits(output.name())
                 if output.name() in node.io_mapping():
-                    value = input_tokens[node.io_mapping()[output.name()]]
+                    traits_str = node.io_mapping()[output.name()]
+                    if traits_str in input_tokens:
+                        value = input_tokens[traits_str]
+                    else:
+                        raise NotImplementedError(f"No default behavior for traits [{traits_str}]")
                 else:
-                    if traits in PortTraitsEnum.DATA:
+                    if entity.is_subclass_of(traits, entity.Data):
                         value = {'value': 100, 'traits': traits}
-                    elif traits in PortTraitsEnum.OBJECT:
+                    elif entity.is_subclass_of(traits, entity.Object):
                         value = {'value': uuid.uuid4(), 'traits': traits}
                     else:
                         assert False, "Never reach here {}".format(traits)
                 output_tokens[output.name()] = value
         return output_tokens
 
-    def execute(self, node: SampleNode) -> NodeStatusEnum:
+    def execute(self, node: OFPNode) -> NodeStatusEnum:
         new_status = NodeStatusEnum.DONE
 
-        input_tokens = {input.name(): self.__results[(node.name(), input.name())] for input in node.input_ports()}
+        input_tokens = {
+            input.name(): self.__results[(node.name(), input.name())]
+            for input in node.input_ports()
+            if (node.name(), input.name()) in self.__results  # For optional inputs
+        }
         output_tokens = self._execute(node, input_tokens)
 
         output_tokens = {(node.name(), key): value for key, value in output_tokens.items()}
@@ -52,7 +62,7 @@ class Simulator:
         logger.debug("execute %s", self.__results)
         return new_status
 
-    def run(self, node: SampleNode) -> NodeStatusEnum:
+    def run(self, node: OFPNode) -> NodeStatusEnum:
         logger.info('run %s', node)
         self.__scheduler[node.name] = datetime.datetime.now()
 
@@ -69,7 +79,7 @@ class Simulator:
         #         del self.__tokens[key]
         return NodeStatusEnum.RUNNING
     
-    def get_status(self, node: SampleNode) -> NodeStatusEnum:
+    def get_status(self, node: OFPNode) -> NodeStatusEnum:
         logger.info('get_status %s', node)
         if node.name not in self.__scheduler:
             return NodeStatusEnum.ERROR
@@ -81,7 +91,7 @@ class Simulator:
             return self.execute(node)
         return NodeStatusEnum.RUNNING
 
-    def transmit_token(self, node: SampleNode) -> NodeStatusEnum:
+    def transmit_token(self, node: OFPNode) -> NodeStatusEnum:
         logger.info('transmit_token %s', node)
         for output in node.output_ports():
             key = (node.name(), output.name())
@@ -98,7 +108,7 @@ class Simulator:
             if send:
                 del self.__tokens[key]
 
-    def reset_token(self, node: SampleNode):
+    def reset_token(self, node: OFPNode):
         for port in itertools.chain(node.input_ports(), node.output_ports()):
             key = (node.name(), port.name())
             if key in self.__tokens:
