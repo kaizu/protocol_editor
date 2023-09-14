@@ -39,8 +39,8 @@ def reset_session(graph):
     logger.info("reset_session")
     all_nodes = (node for node in graph.all_nodes() if isinstance(node, (OFPNode, OFPGroupNode)))
     for node in all_nodes:
-        if node.get_property('status') in (NodeStatusEnum.DONE.value, NodeStatusEnum.WAITING.value):
-            node.set_property('status', NodeStatusEnum.READY.value)
+        if node.get_node_status() in (NodeStatusEnum.DONE, NodeStatusEnum.WAITING):
+            node.set_node_status(NodeStatusEnum.READY)
 
 def verify_session(graph):
     logger.info("verify_session")
@@ -111,10 +111,10 @@ def verify_session(graph):
                 is_valid_node = False
 
         if not is_valid_node:
-            node.set_property('status', NodeStatusEnum.ERROR.value, push_undo=False)
+            node.set_node_status(NodeStatusEnum.ERROR)
             is_valid_graph = False
-        elif node.get_property('status') == NodeStatusEnum.ERROR.value:
-            node.set_property('status', NodeStatusEnum.READY.value, push_undo=False)
+        elif node.get_node_status() == NodeStatusEnum.ERROR:
+            node.set_node_status(NodeStatusEnum.READY)
 
     # logger.info(graph.serialize_session())
     return is_valid_graph
@@ -281,7 +281,7 @@ class MyNodeGraph(NodeGraph):
         elif isinstance(node, (OFPNode, OFPGroupNode)) and name == "status":
             node.update_color()
             if value != NodeStatusEnum.DONE.value:
-                self.simulator.reset_token(node, get_graph_id(self))
+                self.simulator.reset_token(node, get_graph_id(self))  #XXX
 
     def set_property(self, name, value):
         self.__mymodel.set_property(name, value)
@@ -304,11 +304,11 @@ class MyNodeGraph(NodeGraph):
             if not isinstance(node, (OFPNode, OFPGroupNode)):
                 logger.info('This is not an instance of OFPNode.')
                 continue
-            if node.get_property('status') != NodeStatusEnum.READY.value:
-                logger.info('Status is not READY. {}'.format(node.get_property('status')))
+            if node.get_node_status() != NodeStatusEnum.READY:
+                logger.info(f'Status is not READY. {node.get_node_status()}')
                 continue
             
-            node.set_property('status', NodeStatusEnum.WAITING.value, push_undo=False)
+            node.set_node_status(NodeStatusEnum.WAITING)
 
             dependencies = []
             for port in node.input_ports():

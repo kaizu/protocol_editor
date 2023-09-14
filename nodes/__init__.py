@@ -190,7 +190,7 @@ class OFPNode(ofp_node_base(BaseNode)):
         return NodeStatusEnum(self.get_property('status'))
     
     def set_node_status(self, newstatus):
-        self.set_property('status', newstatus.value)
+        self.set_property('status', newstatus.value, push_undo=False)
     
     def run(self, input_tokens):
         self.__input_queue.append(input_tokens.copy())
