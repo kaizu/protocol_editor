@@ -186,6 +186,7 @@ def ofp_node_base(cls):
             return NodeStatusEnum(self.get_property('status'))
         
         def set_node_status(self, newstatus):
+            logger.info(f"set_node_status {repr(newstatus)}")
             self.set_property('status', newstatus.value, push_undo=False)
         
         def run(self, input_tokens):

@@ -31,9 +31,31 @@ from simulator import Simulator
 logger = getLogger(__name__)
 
 
+def get_graph_id(graph):
+    if graph.is_root:
+        return id(graph)  #XXX
+    return id(graph.node)  # SubGraph
+
 def run_session(graph):
-    logger.info("run_session")
-    graph._run()
+    logger.info(f"run_session {get_graph_id(graph)}")
+    print(f"run_session {get_graph_id(graph)}")
+    
+    for node in graph.all_nodes():
+        logger.info('node {}'.format(node))
+        if not isinstance(node, (OFPNode, OFPGroupNode)):
+            logger.info('This is not an instance of OFPNode.')
+            continue
+        if node.get_node_status() != NodeStatusEnum.READY:
+            logger.info(f'Status is not READY. {node.get_node_status()}')
+            continue
+            
+        node.set_node_status(NodeStatusEnum.WAITING)
+
+        # if isinstance(node, OFPGroupNode):
+        #     subgraph = node.get_sub_graph()
+        #     if subgraph is not None:
+        #         #XXX
+        #         run_session(subgraph)
 
 def reset_session(graph):
     logger.info("reset_session")
@@ -120,11 +142,6 @@ def verify_session(graph):
     return is_valid_graph
 
 loop_count = 0
-
-def get_graph_id(graph):
-    if graph.is_root:
-        return id(graph)  #XXX
-    return id(graph.node())  # SubGraph
 
 def _main_loop(graph, sim):
     graph_id = get_graph_id(graph)
@@ -295,29 +312,6 @@ class MyNodeGraph(NodeGraph):
 
     def allocate_station(self, node):
         return self.__mymodel.allocate_station(node)
-    
-    def _run(self):
-        session = {}
-
-        for node in self.all_nodes():
-            logger.info('node {}'.format(node))
-            if not isinstance(node, (OFPNode, OFPGroupNode)):
-                logger.info('This is not an instance of OFPNode.')
-                continue
-            if node.get_node_status() != NodeStatusEnum.READY:
-                logger.info(f'Status is not READY. {node.get_node_status()}')
-                continue
-            
-            node.set_node_status(NodeStatusEnum.WAITING)
-
-            dependencies = []
-            for port in node.input_ports():
-                assert len(port.connected_ports()) <= 1
-                for another_port in port.connected_ports():
-                    dependencies.append(another_port.node().NODE_NAME)
-            session[node.NODE_NAME] = dependencies
-
-        logger.info(session)
     
     def expand_group_node(self, node):
         subgraph = super(MyNodeGraph, self).expand_group_node(node)

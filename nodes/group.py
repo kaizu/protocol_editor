@@ -21,34 +21,28 @@ class OFPGroupNode(ofp_node_base(GroupNode)):
     def __init__(self):
         super(OFPGroupNode, self).__init__()
 
-        self.create_property('status', NodeStatusEnum.ERROR)
-        # self.add_text_input('_status', tab='widgets')
+    def update_node_status(self):
+        current_status = self.get_node_status()
+        if current_status == NodeStatusEnum.RUNNING:
+            assert len(self._input_queue) > 0
 
-    def update_color(self):
-        logger.info("update_color %s", self)
+            output_tokens = self.execute(self._input_queue.popleft())
+            # try:
+            #     output_tokens = self.execute(self._input_queue.popleft())
+            # except:
+            #     self.set_node_status(NodeStatusEnum.ERROR)
 
-        value = self.get_property('status')
-        if value == NodeStatusEnum.READY.value:
-            self.set_color(13, 18, 23)
-        elif value == NodeStatusEnum.ERROR.value:
-            self.set_color(63, 18, 23)
-        elif value == NodeStatusEnum.WAITING.value:
-            self.set_color(63, 68, 73)
-        elif value == NodeStatusEnum.RUNNING.value:
-            self.set_color(13, 18, 73)
-        elif value == NodeStatusEnum.DONE.value:
-            self.set_color(13, 68, 23)
-        else:
-            assert False, "Never reach here {}".format(value)
-        
-        # subgraph = self.get_sub_graph()
-        # if subgraph is not None:
-        #     for node in subgraph.all_nodes():
-        #         # print(f"{self.name()}: {node.name()}")
-        #         pass
+            self.output_queue.append(output_tokens)
 
-        # self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
+            if len(self._input_queue) == 0:
+                self.set_node_status(NodeStatusEnum.DONE)
 
+        def run(self, input_tokens):
+            super(OFPGroupNode, self).run(input_tokens)
+
+        def execute(self, input_tokens):
+            raise NotImplementedError()
+    
 class ForEachNode(OFPGroupNode):
 
     __identifier__ = 'builtins'
@@ -64,8 +58,8 @@ class ForEachNode(OFPGroupNode):
 
         self.set_port_deletion_allowed(True)
 
-        self._add_input("in1", entity.Object)
-        self._add_output("out1", entity.Object)
+        self._add_input("in1", entity.Data)
+        self._add_output("out1", entity.Data)
         self.set_io_mapping("out1", "in1")
 
     def on_value_changed(self, *args, **kwargs):
@@ -73,8 +67,8 @@ class ForEachNode(OFPGroupNode):
         nports = len(self.input_ports())
         if n > nports:
             for i in range(nports, n):
-                self._add_input(f"in{i+1}", entity.Object)
-                self._add_output(f"out{i+1}", entity.Object)
+                self._add_input(f"in{i+1}", entity.Data)
+                self._add_output(f"out{i+1}", entity.Data)
                 self.set_io_mapping(f"out{i+1}", f"in{i+1}")
         elif n < nports:
             for i in range(nports, n, -1):
@@ -88,3 +82,6 @@ class ForEachNode(OFPGroupNode):
                     port.disconnect_from(another)
                 self.delete_output(f"out{i}")
                 self.delete_io_mapping(f"out{i}")
+
+    def update_node_status(self):
+        pass
