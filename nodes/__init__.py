@@ -77,10 +77,10 @@ class NodeStatusEnum(IntEnum):
     DONE = auto()
 
 def ofp_node_base(cls):
-    class _BasicNode(cls):
+    class _OFPNodeBase(cls):
 
         def __init__(self, *args, **kwargs):
-            super(_BasicNode, self).__init__(*args, **kwargs)
+            super(_OFPNodeBase, self).__init__(*args, **kwargs)
 
             self.__port_traits = {}
             self.__io_mapping = {}
@@ -153,7 +153,7 @@ def ofp_node_base(cls):
                 return port_traits
             return self.__port_traits[name][0]
         
-    return _BasicNode
+    return _OFPNodeBase
 
 class OFPNode(ofp_node_base(BaseNode)):
 
