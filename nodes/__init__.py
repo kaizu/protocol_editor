@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
 
+import uuid
+from collections import deque
 from enum import IntEnum, auto
 
 from Qt import QtGui, QtCore
@@ -105,9 +107,6 @@ def ofp_node_base(cls):
                 assert False, 'Never reach here {}'.format(traits)
             self.__port_traits[name] = (traits, False)
 
-        def execute(self, input_tokens):
-            raise NotImplementedError()
-        
         def set_io_mapping(self, output_port_name, expression):
             assert output_port_name in self.outputs(), output_port_name
             # assert input_port_name in self.inputs(), input_port_name
@@ -153,6 +152,7 @@ def ofp_node_base(cls):
                 port_traits = evaluate_traits(expression, input_traits)[0]
                 return port_traits
             return self.__port_traits[name][0]
+        
     return _BasicNode
 
 class OFPNode(ofp_node_base(BaseNode)):
@@ -161,44 +161,116 @@ class OFPNode(ofp_node_base(BaseNode)):
         super(OFPNode, self).__init__()
 
         self.create_property('status', NodeStatusEnum.ERROR)
-        # self.add_text_input('_status', tab='widgets')
+
+        self.__input_queue = deque()
+        self.__output_queue = deque()
 
     def update_color(self):
         logger.info("update_color %s", self)
 
-        value = self.get_property('status')
-        if value == NodeStatusEnum.READY.value:
+        value = self.get_node_status()
+        if value == NodeStatusEnum.READY:
             self.set_color(13, 18, 23)
-        elif value == NodeStatusEnum.ERROR.value:
+        elif value == NodeStatusEnum.ERROR:
             self.set_color(63, 18, 23)
-        elif value == NodeStatusEnum.WAITING.value:
+        elif value == NodeStatusEnum.WAITING:
             self.set_color(63, 68, 73)
-        elif value == NodeStatusEnum.RUNNING.value:
+        elif value == NodeStatusEnum.RUNNING:
             self.set_color(13, 18, 73)
-        elif value == NodeStatusEnum.DONE.value:
+        elif value == NodeStatusEnum.DONE:
             self.set_color(13, 68, 23)
         else:
             assert False, "Never reach here {}".format(value)
 
-        # self.set_property('_status', NodeStatusEnum(value).name, push_undo=False)
+    @property
+    def output_queue(self):
+        return self.__output_queue  # No longer protected
+    
+    def get_node_status(self):
+        return NodeStatusEnum(self.get_property('status'))
+    
+    def set_node_status(self, newstatus):
+        self.set_property('status', newstatus.value)
+    
+    def run(self, input_tokens):
+        self.__input_queue.append(input_tokens.copy())
+        if self.get_node_status() != NodeStatusEnum.RUNNING:
+            self.set_node_status(NodeStatusEnum.RUNNING)
+
+    def update_node_status(self):
+        current_status = self.get_node_status()
+        if current_status == NodeStatusEnum.RUNNING:
+            assert len(self.__input_queue) > 0
+
+            output_tokens = self.execute(self.__input_queue.popleft())
+            # try:
+            #     output_tokens = self.execute(self.__input_queue.popleft())
+            # except:
+            #     self.set_node_status(NodeStatusEnum.ERROR)
+
+            self.__output_queue.append(output_tokens)
+
+            if len(self.__input_queue) == 0:
+                self.set_node_status(NodeStatusEnum.DONE)
 
     def execute(self, input_tokens):
-        assert all(input.name() in input_tokens for input in self.input_ports())
-        if all(self.has_property(output.name()) for output in self.output_ports()):
-            #XXX: ast.literal_eval
-            return {
-                output.name(): {
-                    "value": eval(self.get_property(output.name()),{"__builtins__": None}, {}),
-                    "traits": self.get_port_traits(output.name())
-                }
-                for output in self.output_ports()}
-        else:
-            raise NotImplementedError()
+        raise NotImplementedError()
+        # assert all(input.name() in input_tokens for input in self.input_ports())
+        # if all(self.has_property(output.name()) for output in self.output_ports()):
+        #     #XXX: ast.literal_eval
+        #     return {
+        #         output.name(): {
+        #             "value": eval(self.get_property(output.name()),{"__builtins__": None}, {}),
+        #             "traits": self.get_port_traits(output.name())
+        #         }
+        #         for output in self.output_ports()}
+        # else:
+        #     raise NotImplementedError()
 
-class ObjectNode(OFPNode):
+class ObjectOFPNode(OFPNode):
 
     def __init__(self):
-        super(ObjectNode, self).__init__()
+        super(ObjectOFPNode, self).__init__()
         # self.add_text_input('station', tab='widgets')
         self.create_property('station', "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
-        
+
+    def execute(self, input_tokens):
+        output_tokens = {}
+        for output in self.output_ports():
+            traits = self.get_port_traits(output.name())
+            if output.name() in self.io_mapping():
+                traits_str = self.io_mapping()[output.name()]
+                if traits_str in input_tokens:
+                    value = input_tokens[traits_str]
+                else:
+                    raise NotImplementedError(f"No default behavior for traits [{traits_str}]")
+            else:
+                if entity.is_subclass_of(traits, entity.Data):
+                    value = {'value': 100, 'traits': traits}
+                elif entity.is_subclass_of(traits, entity.Object):
+                    value = {'value': uuid.uuid4(), 'traits': traits}
+                else:
+                    assert False, "Never reach here {}".format(traits)
+            output_tokens[output.name()] = value
+        return output_tokens
+
+class DataOFPNode(OFPNode):
+
+    def __init__(self):
+        super(DataOFPNode, self).__init__()
+    
+    def execute(self, input_tokens):
+        output_tokens = {}
+        for output in self.output_ports():
+            traits = self.get_port_traits(output.name())
+            if output.name() in self.io_mapping():
+                traits_str = self.io_mapping()[output.name()]
+                if traits_str in input_tokens:
+                    value = input_tokens[traits_str]
+                else:
+                    raise NotImplementedError(f"No default behavior for traits [{traits_str}]")
+            else:
+                assert entity.is_subclass_of(traits, entity.Data)
+                value = {'value': 100, 'traits': traits}
+            output_tokens[output.name()] = value
+        return output_tokens

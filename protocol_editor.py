@@ -22,7 +22,7 @@ from NodeGraphQt import (
 from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
-from nodes import NodeStatusEnum, OFPNode, ObjectNode, evaluate_traits
+from nodes import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, evaluate_traits
 from nodes.group import OFPGroupNode, ForEachNode
 import nodes.entity as entity
 import nodes.builtins
@@ -61,7 +61,7 @@ def verify_session(graph):
 
         is_valid_node = True
 
-        # if isinstance(node, ObjectNode):
+        # if isinstance(node, ObjectOFPNode):
         #     station = graph.allocate_station(node)
         #     node.set_property("station", station, push_undo=False)
         #     is_valid_node = is_valid_node and station != ""
@@ -132,26 +132,30 @@ def _main_loop(graph, sim):
         node for node in graph.all_nodes()
         if isinstance(node, (OFPNode, OFPGroupNode))
     ]
-    running = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.RUNNING.value]
-    waiting = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.WAITING.value]
 
-    for node in running:
-        new_status = sim.get_status(node, graph_id)  # execute when done
-        logger.info("_main_loop %s", new_status)
-        node.set_property('status', new_status.value)
+    for node in all_nodes:
+        node.update_node_status()
     
     for node in all_nodes:
-        if node.get_property('status') == NodeStatusEnum.DONE.value:
+        if node.get_node_status() == NodeStatusEnum.DONE:
+            sim.fetch_token(node, graph_id)
             sim.transmit_token(node, graph_id)
 
-    for node in waiting:
-        if all((node.is_optional_port(input_port.name()) and len(input_port.connected_ports()) == 0) or sim.has_token((graph_id, node.name(), input_port.name())) for input_port in node.input_ports()):
-            node.set_property('status', sim.run(node, graph_id).value)
+    for node in all_nodes:
+        if (
+            node.get_node_status() == NodeStatusEnum.WAITING
+            and all(
+                (node.is_optional_port(input_port.name()) and len(input_port.connected_ports()) == 0)
+                or sim.has_token((graph_id, node.name(), input_port.name()))
+                for input_port in node.input_ports()
+            )
+        ):
+            sim.run(node, graph_id)
 
 def main_loop(graph):
     global loop_count
     loop_count += 1
-    logger.info(f"main_loop: loop_count={loop_count}, graph_id={get_graph_id(graph)}")
+    # logger.info(f"main_loop: loop_count={loop_count}, graph_id={get_graph_id(graph)}")
 
     _main_loop(graph, graph.simulator)
 
@@ -190,7 +194,7 @@ def declare_node(name, doc):
         for _, traits_str in doc.get('input', {}).items():
             traits, _ = evaluate_traits(traits_str)
             if entity.is_subclass_of(traits, entity.Object):
-                return ObjectNode
+                return ObjectOFPNode
         for _, traits_str in doc.get('output', {}).items():
             try:
                 traits, _ = evaluate_traits(traits_str)
@@ -198,8 +202,8 @@ def declare_node(name, doc):
                 pass  # io_mapping
             else:
                 if entity.is_subclass_of(traits, entity.Object):
-                    return ObjectNode
-        return OFPNode
+                    return ObjectOFPNode
+        return DataOFPNode
     
     base_cls = base_node_class(doc)
 
