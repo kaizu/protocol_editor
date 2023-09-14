@@ -12,9 +12,9 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
-from nodes import OFPNode
-from . import entity
-from .node_widgets import DoubleSpinBoxWidget, LabelWidget, PushButtonWidget
+from nodes.ofp_node import OFPNode
+from nodes import entity
+from nodes.node_widgets import DoubleSpinBoxWidget, LabelWidget, PushButtonWidget
 
 class BuiltinNode(OFPNode):
 

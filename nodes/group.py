@@ -3,8 +3,8 @@
 
 from logging import getLogger
 
-from nodes import evaluate_traits, NodeStatusEnum
-from nodes import ofp_node_base
+from nodes.ofp_node import evaluate_traits, NodeStatusEnum
+from nodes.ofp_node import ofp_node_base
 from nodes import entity
 
 from NodeGraphQt import GroupNode

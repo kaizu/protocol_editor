@@ -22,7 +22,7 @@ from NodeGraphQt import (
 from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
-from nodes import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, evaluate_traits
+from nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, evaluate_traits
 from nodes.group import OFPGroupNode, ForEachNode
 import nodes.entity as entity
 import nodes.builtins

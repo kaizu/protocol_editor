@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import itertools
 
-from nodes import OFPNode, NodeStatusEnum
+from nodes.ofp_node import OFPNode, NodeStatusEnum
 
 from logging import getLogger
 
