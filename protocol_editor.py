@@ -44,14 +44,27 @@ def reset_session(graph):
 
 def verify_session(graph):
     logger.info("verify_session")
-    all_nodes = (node for node in graph.all_nodes() if isinstance(node, (OFPNode, OFPGroupNode)))
-    for node in all_nodes:
-        is_valid = True
+
+    is_valid_graph = True
+
+    for node in graph.all_nodes():
+        if isinstance(node, (OFPNode, OFPGroupNode)):
+            pass
+        elif isinstance(node, PortInputNode):
+            is_valid_graph = is_valid_graph and all(len(port.connected_ports()) > 0 for port in node.output_ports())
+            continue
+        elif isinstance(node, PortOutputNode):
+            is_valid_graph = is_valid_graph and all(len(port.connected_ports()) > 0 for port in node.input_ports())
+            continue
+        else:
+            continue
+
+        is_valid_node = True
 
         # if isinstance(node, ObjectNode):
         #     station = graph.allocate_station(node)
         #     node.set_property("station", station, push_undo=False)
-        #     is_valid = is_valid and station != ""
+        #     is_valid_node = is_valid_node and station != ""
 
         for port in itertools.chain(
             node.input_ports(), node.output_ports()
@@ -65,7 +78,7 @@ def verify_session(graph):
                 elif port.type_() == PortTypeEnum.OUT.value and entity.is_subclass_of(port_traits, entity.Data):
                     pass
                 else:
-                    is_valid = False
+                    is_valid_node = False
                     break
 
             for another_port in connected_ports:
@@ -86,20 +99,25 @@ def verify_session(graph):
                     or (port.type_() == PortTypeEnum.OUT.value and not entity.is_subclass_of(port_traits, another_traits))
                 ):
                     logger.info("%s %s %s; %s %s %s", node.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
-                    is_valid = False
+                    is_valid_node = False
                     break
-
-        if not is_valid:
-            node.set_property('status', NodeStatusEnum.ERROR.value, push_undo=False)
-        elif node.get_property('status') == NodeStatusEnum.ERROR.value:
-            node.set_property('status', NodeStatusEnum.READY.value, push_undo=False)
 
         if isinstance(node, OFPGroupNode):
             subgraph = node.get_sub_graph()
             if subgraph is not None:
-                verify_session(subgraph)
+                is_valid_subgraph = verify_session(subgraph)
+                is_valid_node = is_valid_node and is_valid_subgraph
+            else:
+                is_valid_node = False
+
+        if not is_valid_node:
+            node.set_property('status', NodeStatusEnum.ERROR.value, push_undo=False)
+            is_valid_graph = False
+        elif node.get_property('status') == NodeStatusEnum.ERROR.value:
+            node.set_property('status', NodeStatusEnum.READY.value, push_undo=False)
 
     # logger.info(graph.serialize_session())
+    return is_valid_graph
 
 loop_count = 0
 
@@ -302,7 +320,7 @@ class MyNodeGraph(NodeGraph):
         subgraph.property_changed.connect(self._property_changed)
 
         return subgraph
-
+            
 class GraphPropertyNode(BaseNode):
 
     def __init__(self, *property_names):
