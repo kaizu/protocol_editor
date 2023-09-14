@@ -121,11 +121,13 @@ def verify_session(graph):
 
 loop_count = 0
 
-def counter(graph):
-    global loop_count
-    loop_count += 1
+def get_graph_id(graph):
+    if graph.is_root:
+        return id(graph)  #XXX
+    return id(graph.node())  # SubGraph
 
-    sim = graph.simulator
+def _main_loop(graph, sim):
+    graph_id = get_graph_id(graph)
     all_nodes = [
         node for node in graph.all_nodes()
         if isinstance(node, (OFPNode, OFPGroupNode))
@@ -134,17 +136,24 @@ def counter(graph):
     waiting = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.WAITING.value]
 
     for node in running:
-        new_status = sim.get_status(node)  # execute when done
-        logger.info("counter %s", new_status)
+        new_status = sim.get_status(node, graph_id)  # execute when done
+        logger.info("_main_loop %s", new_status)
         node.set_property('status', new_status.value)
     
     for node in all_nodes:
         if node.get_property('status') == NodeStatusEnum.DONE.value:
-            sim.transmit_token(node)
+            sim.transmit_token(node, graph_id)
 
     for node in waiting:
-        if all((node.is_optional_port(input_port.name()) and len(input_port.connected_ports()) == 0) or sim.has_token((node.name(), input_port.name())) for input_port in node.input_ports()):
-            node.set_property('status', sim.run(node).value)
+        if all((node.is_optional_port(input_port.name()) and len(input_port.connected_ports()) == 0) or sim.has_token((graph_id, node.name(), input_port.name())) for input_port in node.input_ports()):
+            node.set_property('status', sim.run(node, graph_id).value)
+
+def main_loop(graph):
+    global loop_count
+    loop_count += 1
+    logger.info(f"main_loop: loop_count={loop_count}, graph_id={get_graph_id(graph)}")
+
+    _main_loop(graph, graph.simulator)
 
 class MyModel:
 
@@ -268,7 +277,7 @@ class MyNodeGraph(NodeGraph):
         elif isinstance(node, (OFPNode, OFPGroupNode)) and name == "status":
             node.update_color()
             if value != NodeStatusEnum.DONE.value:
-                self.simulator.reset_token(node)
+                self.simulator.reset_token(node, get_graph_id(self))
 
     def set_property(self, name, value):
         self.__mymodel.set_property(name, value)
@@ -430,7 +439,7 @@ if __name__ == '__main__':
     t1 = QTimer()
     # t1.setInterval(3 * 1000)  # msec
     t1.setInterval(0.5 * 1000)  # msec
-    t1.timeout.connect(functools.partial(counter, graph))
+    t1.timeout.connect(functools.partial(main_loop, graph))
     t1.start()
 
     app.exec_()
