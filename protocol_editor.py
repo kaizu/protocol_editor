@@ -61,7 +61,10 @@ def reset_session(graph):
     logger.info("reset_session")
     all_nodes = (node for node in graph.all_nodes() if isinstance(node, (OFPNode, OFPGroupNode)))
     for node in all_nodes:
-        if node.get_node_status() in (NodeStatusEnum.DONE, NodeStatusEnum.WAITING):
+        # if node.get_node_status() in (NodeStatusEnum.DONE, NodeStatusEnum.WAITING):
+        #     node.set_node_status(NodeStatusEnum.READY)
+        if node.get_node_status() in (NodeStatusEnum.DONE, NodeStatusEnum.WAITING, NodeStatusEnum.RUNNING):
+            node.reset()
             node.set_node_status(NodeStatusEnum.READY)
 
 def verify_session(graph):

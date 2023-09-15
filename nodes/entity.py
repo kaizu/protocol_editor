@@ -29,7 +29,6 @@ def _is_acceptable(one, another):
     elif isinstance(one, types.UnionType) or isinstance(one, typing._UnionGenericAlias):
         return all(_is_acceptable(x, another) for x in one.__args__)
     elif isinstance(one, typing._GenericAlias):
-        assert isinstance(one, typing._GenericAlias)
         assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity), f"{one}"
         return issubclass(one.__origin__, another)
     else:
@@ -56,35 +55,20 @@ def is_acceptable(one, another):
         assert False, "Never reach here"
 
 is_subclass_of = is_acceptable
-# def is_subclass_of(one, another):
-#     if not isinstance(another, typing._GenericAlias):
-#         if inspect.isclass(one):
-#             assert issubclass(one, Entity)
-#             return issubclass(one, another)
-#         elif isinstance(one, types.UnionType):
-#             return all(issubclass(x, another) for x in one.__args__)
-#         else:
-#             assert isinstance(one, typing._GenericAlias)
-#             return issubclass(one.__origin__, another)
-#     else:
-#         if inspect.isclass(one):
-#             assert issubclass(one, Entity)
-#             raise NotImplementedError()
-#         elif isinstance(one, types.UnionType):
-#             raise NotImplementedError()
-#         else:
-#             assert isinstance(one, typing._GenericAlias)
-#             raise NotImplementedError()
 
 class Any(Entity): pass
 
+class Object(Any): pass
+
 class Data(Any): pass
 
-class Group(Data, typing.Generic[typing.TypeVar("T")]): pass
+class _Spread(Entity): pass
+
+class Group(Data, _Spread, typing.Generic[typing.TypeVar("T")]): pass
+
+class ObjectGroup(Object, _Spread, typing.Generic[typing.TypeVar("T")]): pass
 
 class Scalar(Data): pass
-
-class Object(Any): pass
 
 class Tube(Object): pass
 
@@ -130,6 +114,13 @@ if __name__ == "__main__":
     print(is_subclass_of(Group[Array], Group[ArrayLike]))
     print(is_subclass_of(Group[Array], Group[Array]))
     print(is_subclass_of(Group, Group))
+
+    print(is_subclass_of(ObjectGroup[Plate96], _Spread))
+    print(is_subclass_of(ObjectGroup[Plate96], Object))
+
+    print(Group == Group)
+    print(Group[Float] == Group)
+    print(Group[Float] in (Group, ))
 
     # print(Array96, is_category(Array96))
     # print(ArrayLike, is_category(ArrayLike))

@@ -61,6 +61,45 @@ class GroupNode(BuiltinNode):
                     port.disconnect_from(another)
                 self.delete_input(name)
 
+class ObjectGroupNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "ObjectGroup"
+
+    def __init__(self):
+        super(ObjectGroupNode, self).__init__()
+
+        widget = DoubleSpinBoxWidget(self.view, name="ninputs", minimum=1, maximum=10)
+        widget.get_custom_widget().valueChanged.connect(self.on_value_changed)
+        self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+
+        self.set_port_deletion_allowed(True)
+
+        self._add_input("in1", entity.Object)
+        self._add_output("value", entity.ObjectGroup[entity.Object])
+        self.set_io_mapping("value", "ObjectGroup[in1]")
+
+    def _execute(self, input_tokens):
+        ninputs = int(self.get_property("ninputs"))
+        value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
+        traits = input_tokens["in1"]["traits"]  # The first element
+        return {"value": {"value": value, "traits": entity.ObjectGroup[traits]}}
+    
+    def on_value_changed(self, *args, **kwargs):
+        n = int(args[0])
+        nports = len(self.input_ports())
+        if n > nports:
+            for i in range(nports, n):
+                self._add_input(f"in{i+1}", entity.Object)
+        elif n < nports:
+            for i in range(nports, n, -1):
+                name = f"in{i}"
+                port = self.get_input(name)
+                for another in port.connected_ports():
+                    port.disconnect_from(another)
+                self.delete_input(name)
+
 class IntegerNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -125,13 +164,14 @@ class RangeNode(BuiltinNode):
 
     def __init__(self):
         super(RangeNode, self).__init__()
-        self._add_input("start", entity.Real, optional=True)
-        self._add_input("stop", entity.Real)
-        self._add_input("step", entity.Real, optional=True)
-        self._add_output("value", entity.Array[entity.Float])
+        self._add_input("start", entity.Real, optional=True, expand=True)
+        self._add_input("stop", entity.Real, expand=True)
+        self._add_input("step", entity.Real, optional=True, expand=True)
+        self._add_output("value", entity.Array[entity.Float], expand=True)
 
         self.set_default_value("start", 0, entity.Integer)
         self.set_default_value("step", 1, entity.Integer)
+        self.set_io_mapping("value", "Array[Float]")
     
     def _execute(self, input_tokens):
         start = input_tokens["start"]["value"]
@@ -148,14 +188,15 @@ class LinspaceNode(BuiltinNode):
 
     def __init__(self):
         super(LinspaceNode, self).__init__()
-        self._add_input("start", entity.Real, optional=True)
-        self._add_input("stop", entity.Real, optional=True)
-        self._add_input("num", entity.Integer)
-        self._add_output("value", entity.Array[entity.Float])
+        self._add_input("start", entity.Real, optional=True, expand=True)
+        self._add_input("stop", entity.Real, optional=True, expand=True)
+        self._add_input("num", entity.Integer, expand=True)
+        self._add_output("value", entity.Array[entity.Float], expand=True)
 
         self.set_default_value("start", 0, entity.Float)
         self.set_default_value("stop", 1, entity.Float)
-
+        self.set_io_mapping("value", "Array[Float]")
+        
     def _execute(self, input_tokens):
         start = input_tokens["start"]["value"]
         stop = input_tokens["stop"]["value"]
@@ -170,9 +211,9 @@ class RepeatNode(BuiltinNode):
 
     def __init__(self):
         super(RepeatNode, self).__init__()
-        self._add_input("a", entity.Array)
-        self._add_input("repeats", entity.Integer)
-        self._add_output("value", entity.Array)
+        self._add_input("a", entity.Array, expand=True)
+        self._add_input("repeats", entity.Integer, expand=True)
+        self._add_output("value", entity.Array, expand=True)
         self.set_io_mapping("value", "a")
     
     def _execute(self, input_tokens):
@@ -188,9 +229,9 @@ class TileNode(BuiltinNode):
 
     def __init__(self):
         super(TileNode, self).__init__()
-        self._add_input("a", entity.Array)
-        self._add_input("reps", entity.Integer)
-        self._add_output("value", entity.Array)
+        self._add_input("a", entity.Array, expand=True)
+        self._add_input("reps", entity.Integer, expand=True)
+        self._add_output("value", entity.Array, expand=True)
         self.set_io_mapping("value", "a")
     
     def _execute(self, input_tokens):
@@ -206,13 +247,13 @@ class SliceNode(BuiltinNode):
 
     def __init__(self):
         super(SliceNode, self).__init__()
-        self._add_input("a", entity.Array)
-        self._add_output("value", entity.Array)
+        self._add_input("a", entity.Array, expand=True)
+        self._add_output("value", entity.Array, expand=True)
         self.set_io_mapping("value", "a")
 
-        self._add_input("start", entity.Integer, optional=True)
-        self._add_input("stop", entity.Integer, optional=True)
-        self._add_input("step", entity.Integer, optional=True)
+        self._add_input("start", entity.Integer, optional=True, expand=True)
+        self._add_input("stop", entity.Integer, optional=True, expand=True)
+        self._add_input("step", entity.Integer, optional=True, expand=True)
 
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -230,8 +271,8 @@ class SumNode(BuiltinNode):
 
     def __init__(self):
         super(SumNode, self).__init__()
-        self._add_input("a", entity.Array[entity.Real])
-        self._add_output("value", entity.Real)
+        self._add_input("a", entity.Array[entity.Real], expand=True)
+        self._add_output("value", entity.Real, expand=True)
         self.set_io_mapping("value", "unwrap(a)")
     
     def _execute(self, input_tokens):
@@ -246,8 +287,9 @@ class LengthNode(BuiltinNode):
 
     def __init__(self):
         super(LengthNode, self).__init__()
-        self._add_input("a", entity.Array)
-        self._add_output("value", entity.Integer)
+        self._add_input("a", entity.Array, expand=True)
+        self._add_output("value", entity.Integer, expand=True)
+        self.set_io_mapping("value", "Integer")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -261,9 +303,9 @@ class AddNode(BuiltinNode):
 
     def __init__(self):
         super(AddNode, self).__init__()
-        self._add_input("a", entity.Data)
-        self._add_input("b", entity.Data)
-        self._add_output("value", entity.Data)
+        self._add_input("a", entity.Array | entity.Real, expand=True)
+        self._add_input("b", entity.Array | entity.Real, expand=True)
+        self._add_output("value", entity.Array | entity.Real, expand=True)
         self.set_io_mapping("value", "a")  #FIXME:
     
     def _execute(self, input_tokens):
@@ -279,9 +321,9 @@ class SubNode(BuiltinNode):
 
     def __init__(self):
         super(SubNode, self).__init__()
-        self._add_input("a", entity.Data)
-        self._add_input("b", entity.Data)
-        self._add_output("value", entity.Data)
+        self._add_input("a", entity.Array | entity.Real, expand=True)
+        self._add_input("b", entity.Array | entity.Real, expand=True)
+        self._add_output("value", entity.Array | entity.Real, expand=True)
         self.set_io_mapping("value", "a")
     
     def _execute(self, input_tokens):
@@ -365,6 +407,25 @@ class ScatterNode(BuiltinNode):
 
 # import fluent.experiments
 
+class InspectNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Inspect"
+
+    def __init__(self):
+        super(InspectNode, self).__init__()
+        self._add_input("in1", entity.Object)
+        self._add_output("out1", entity.Object)
+        self.set_io_mapping("out1", "in1")
+
+        self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
+    
+    def _execute(self, input_tokens):
+        assert "in1" in input_tokens
+        self.set_property("in1", str(input_tokens["in1"]))
+        return {"out1": input_tokens["in1"].copy()}
+
 class DispenseLiquid96WellsNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -374,10 +435,10 @@ class DispenseLiquid96WellsNode(BuiltinNode):
     def __init__(self):
         super(DispenseLiquid96WellsNode, self).__init__()
 
-        self._add_input("in1", entity.Plate96)
-        self._add_output("out1", entity.Plate96)
-        self._add_input("channel", entity.Integer, optional=True)
-        self._add_input("volume", entity.Array[entity.Real])
+        self._add_input("in1", entity.Plate96, expand=True)
+        self._add_output("out1", entity.Plate96, expand=True)
+        self._add_input("channel", entity.Integer, optional=True, expand=True)
+        self._add_input("volume", entity.Array[entity.Real], expand=True)
         self.set_io_mapping("out1", "in1")
 
         self.set_default_value("channel", 0, entity.Integer)
@@ -399,9 +460,9 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
     def __init__(self):
         super(ReadAbsorbance3ColorsNode, self).__init__()
 
-        self._add_input("in1", entity.Plate96)
-        self._add_output("out1", entity.Plate96)
-        self._add_output("value", entity.Group[entity.Array[entity.Float]])
+        self._add_input("in1", entity.Plate96, expand=True)
+        self._add_output("out1", entity.Plate96, expand=True)
+        self._add_output("value", entity.Group[entity.Array[entity.Float]], expand=True)
 
         self.set_io_mapping("out1", "in1")
     
