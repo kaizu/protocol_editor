@@ -224,14 +224,16 @@ def trait_node_base(cls):
                     return another_traits
                 else:
                     return another.get_port_traits(connected.name())
+            else:
+                if input_port.name() in self.__default_value:
+                    return self.__default_value[input_port.name()]["traits"]
             return self.__port_traits[input_port.name()][0]
         
         def get_port_traits(self, name):
             #XXX: This impl would be too slow. Use cache
             if name in self.__io_mapping:
                 expression = self.__io_mapping[name]
-                input_traits = {name: value["traits"] for name, value in self.__default_value.items()}
-                input_traits.update({input.name(): self._get_connected_traits(input) for input in self.input_ports()})
+                input_traits = {input.name(): self._get_connected_traits(input) for input in self.input_ports()}
                 # print(f"{expression}: {input_traits}: {name}")
                 _input_traits = {name: unwrap_traits(traits) if name in self.__expandables else traits for name, traits in input_traits.items()}
                 port_traits = evaluate_traits(expression, _input_traits)[0]
