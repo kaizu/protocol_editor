@@ -197,7 +197,7 @@ class PushButtonWidget(NodeBaseWidget):
 #         # self.add_text_input("mywidget", tab="widgets")
 #         self._add_input("in1", PortTraitsEnum.DATA)
 
-#     def execute(self, input_tokens):
+#     def _execute(self, input_tokens):
 #         value = input_tokens["in1"]
 #         # value = input_tokens["in1"]["value"]
 #         self.set_property("mywidget", str(value), push_undo=False)

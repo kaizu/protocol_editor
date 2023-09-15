@@ -37,11 +37,11 @@ class OFPGroupNode(ofp_node_base(GroupNode)):
             if len(self._input_queue) == 0:
                 self.set_node_status(NodeStatusEnum.DONE)
 
-        def run(self, input_tokens):
-            super(OFPGroupNode, self).run(input_tokens)
+    def run(self, input_tokens):
+        super(OFPGroupNode, self).run(input_tokens)
 
-        def execute(self, input_tokens):
-            raise NotImplementedError()
+    def execute(self, input_tokens):
+        raise NotImplementedError()
     
 class ForEachNode(OFPGroupNode):
 
@@ -81,7 +81,6 @@ class ForEachNode(OFPGroupNode):
                 for another in port.connected_ports():
                     port.disconnect_from(another)
                 self.delete_output(f"out{i}")
-                self.delete_io_mapping(f"out{i}")
 
     def update_node_status(self):
         pass

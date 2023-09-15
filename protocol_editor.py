@@ -38,7 +38,7 @@ def get_graph_id(graph):
 
 def run_session(graph):
     logger.info(f"run_session {get_graph_id(graph)}")
-    print(f"run_session {get_graph_id(graph)}")
+    # print(f"run_session {get_graph_id(graph)}")
     
     for node in graph.all_nodes():
         logger.info('node {}'.format(node))

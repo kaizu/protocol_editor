@@ -26,19 +26,23 @@ def _is_acceptable(one, another):
     if inspect.isclass(one):
         assert issubclass(one, Entity)
         return issubclass(one, another)
+    elif isinstance(one, types.UnionType) or isinstance(one, typing._UnionGenericAlias):
+        return all(_is_acceptable(x, another) for x in one.__args__)
     elif isinstance(one, typing._GenericAlias):
         assert isinstance(one, typing._GenericAlias)
-        assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity)
+        assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity), f"{one}"
         return issubclass(one.__origin__, another)
-    elif isinstance(one, types.UnionType):
-        return all(_is_acceptable(x, another) for x in one.__args__)
     else:
         assert False, f"Never reach here [{type(one)}]"
 
 def is_acceptable(one, another):
+    # print(f"is_acceptable: {one}, {another}")
     if inspect.isclass(another):
         assert issubclass(another, Entity)
         return _is_acceptable(one, another)
+    elif isinstance(another, types.UnionType) or isinstance(another, typing._UnionGenericAlias):
+        # return any(_is_acceptable(one, x) for x in another.__args__)
+        return any(is_acceptable(one, x) for x in another.__args__)
     elif isinstance(another, typing._GenericAlias):
         if isinstance(one, typing._GenericAlias):
             return (
@@ -48,8 +52,6 @@ def is_acceptable(one, another):
             )
         else:
             return False
-    elif isinstance(another, types.UnionType):
-        return any(_is_acceptable(one, x) for x in another.__args__)
     else:
         assert False, "Never reach here"
 
