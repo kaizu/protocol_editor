@@ -58,12 +58,12 @@ def draw_square_port(painter, rect, info):
 
     painter.restore()
 
-def wrap(original_type, entity_types):
+def wrap_traits(original_type, entity_types):
     if any(entity.is_acceptable(entity_type, entity.Group) for entity_type in entity_types):
         return entity.Group[original_type]
     return original_type
 
-def unwrap(entity_type):
+def unwrap_traits(entity_type):
     if entity.is_acceptable(entity_type, entity.Group):
         return entity_type.__args__[0]
     return entity_type
@@ -74,7 +74,8 @@ def evaluate_traits(expression, inputs=None):
     # print(f"inputs -> {inputs}")
     # print(f"params -> {params}")
     locals = dict(inputs, **params)
-    locals.update({"wrap": wrap, "unwrap": unwrap})
+    # locals.update({"wrap": wrap_traits, "unwrap": unwrap_traits})
+    locals.update({"unwrap": unwrap_traits})
     code = compile(expression, "<string>", "eval")
     is_static = all(name in params for name in code.co_names)
     assert all(name in locals for name in code.co_names)

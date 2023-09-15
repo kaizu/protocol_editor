@@ -103,6 +103,14 @@ class Array(Data, typing.Generic[typing.TypeVar("T")]): pass
 ArrayLike = Plate96 | Array
 Real = Integer | Float
 
+def integer_or_float(*types):
+    assert len(types) > 0
+    for x in types:
+        if x == Float:
+            return Float
+        assert x == Integer
+    return Integer
+
 def get_categories():
     return {
         key: value

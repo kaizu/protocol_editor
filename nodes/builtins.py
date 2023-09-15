@@ -111,7 +111,6 @@ class FullNode(BuiltinNode):
 
         self.set_default_value("fill_value", 0.0, entity.Float)
         self.set_io_mapping("value", "Array[fill_value]")
-        # self.set_io_mapping("value", "wrap(Array[unwrap(fill_value)], (fill_value, ))")
 
     def _execute(self, input_tokens):
         fill_value = input_tokens["fill_value"]["value"]
@@ -138,7 +137,8 @@ class RangeNode(BuiltinNode):
         start = input_tokens["start"]["value"]
         stop = input_tokens["stop"]["value"]
         step = input_tokens["step"]["value"]
-        return {"value": {"value": numpy.arange(start, stop, step, dtype=numpy.float64), "traits": entity.Array[entity.Float]}}
+        traits = entity.integer_or_float(input_tokens["start"]["traits"], input_tokens["stop"]["traits"], input_tokens["step"]["traits"])
+        return {"value": {"value": numpy.arange(start, stop, step), "traits": entity.Array[traits]}}
 
 class LinspaceNode(BuiltinNode):
 
@@ -231,11 +231,12 @@ class SumNode(BuiltinNode):
     def __init__(self):
         super(SumNode, self).__init__()
         self._add_input("a", entity.Array[entity.Real])
-        self._add_output("value", entity.Float)  #FIXME: entity.Real
+        self._add_output("value", entity.Real)
+        self.set_io_mapping("value", "unwrap(a)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
-        return {"value": {"value": float(numpy.sum(a)), "traits": entity.Float}}
+        return {"value": {"value": numpy.sum(a), "traits": input_tokens["a"]["traits"]}}
 
 class LengthNode(BuiltinNode):
 
@@ -263,7 +264,7 @@ class AddNode(BuiltinNode):
         self._add_input("a", entity.Data)
         self._add_input("b", entity.Data)
         self._add_output("value", entity.Data)
-        self.set_io_mapping("value", "a")
+        self.set_io_mapping("value", "a")  #FIXME:
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -375,9 +376,9 @@ class DispenseLiquid96WellsNode(BuiltinNode):
 
         self._add_input("in1", entity.Plate96)
         self._add_output("out1", entity.Plate96)
-
         self._add_input("channel", entity.Integer, optional=True)
         self._add_input("volume", entity.Array[entity.Real])
+        self.set_io_mapping("out1", "in1")
 
         self.set_default_value("channel", 0, entity.Integer)
     
@@ -400,8 +401,9 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
 
         self._add_input("in1", entity.Plate96)
         self._add_output("out1", entity.Plate96)
-
         self._add_output("value", entity.Group[entity.Array[entity.Float]])
+
+        self.set_io_mapping("out1", "in1")
     
     def _execute(self, input_tokens):
         params = {}
