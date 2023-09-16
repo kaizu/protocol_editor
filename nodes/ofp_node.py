@@ -83,7 +83,7 @@ def evaluate_traits(expression, inputs=None):
     # print(f"params -> {params}")
     locals = dict(inputs, **params)
     # locals.update({"wrap": wrap_traits_if, "unwrap": unwrap_traits})
-    locals.update({"unwrap": unwrap_traits})
+    locals.update({"upper": entity.upper, "first_arg": entity.first_arg})
     code = compile(expression, "<string>", "eval")
     is_static = all(name in params for name in code.co_names)
     assert all(name in locals for name in code.co_names)

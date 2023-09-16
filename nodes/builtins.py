@@ -167,17 +167,17 @@ class RangeNode(BuiltinNode):
         self._add_input("start", entity.Real, optional=True, expand=True)
         self._add_input("stop", entity.Real, expand=True)
         self._add_input("step", entity.Real, optional=True, expand=True)
-        self._add_output("value", entity.Array[entity.Float], expand=True)
+        self._add_output("value", entity.Array[entity.Real], expand=True)
 
         self.set_default_value("start", 0, entity.Integer)
         self.set_default_value("step", 1, entity.Integer)
-        self.set_io_mapping("value", "Array[Float]")
+        self.set_io_mapping("value", "Array[upper(start, stop, step)]")  #FIXME
     
     def _execute(self, input_tokens):
         start = input_tokens["start"]["value"]
         stop = input_tokens["stop"]["value"]
         step = input_tokens["step"]["value"]
-        traits = entity.integer_or_float(input_tokens["start"]["traits"], input_tokens["stop"]["traits"], input_tokens["step"]["traits"])
+        traits = entity.upper(input_tokens["start"]["traits"], input_tokens["stop"]["traits"], input_tokens["step"]["traits"])
         return {"value": {"value": numpy.arange(start, stop, step), "traits": entity.Array[traits]}}
 
 class LinspaceNode(BuiltinNode):
@@ -273,11 +273,11 @@ class SumNode(BuiltinNode):
         super(SumNode, self).__init__()
         self._add_input("a", entity.Array[entity.Real], expand=True)
         self._add_output("value", entity.Real, expand=True)
-        self.set_io_mapping("value", "unwrap(a)")
+        self.set_io_mapping("value", "first_arg(a)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
-        return {"value": {"value": numpy.sum(a), "traits": input_tokens["a"]["traits"]}}
+        return {"value": {"value": numpy.sum(a), "traits": entity.first_arg(input_tokens["a"]["traits"])}}
 
 class LengthNode(BuiltinNode):
 
@@ -303,15 +303,16 @@ class AddNode(BuiltinNode):
 
     def __init__(self):
         super(AddNode, self).__init__()
-        self._add_input("a", entity.Array | entity.Real, expand=True)
-        self._add_input("b", entity.Array | entity.Real, expand=True)
-        self._add_output("value", entity.Array | entity.Real, expand=True)
-        self.set_io_mapping("value", "a")  #FIXME:
+        self._add_input("a", entity.Array[entity.Real] | entity.Real, expand=True)
+        self._add_input("b", entity.Array[entity.Real] | entity.Real, expand=True)
+        self._add_output("value", entity.Array[entity.Real] | entity.Real, expand=True)
+        self.set_io_mapping("value", "upper(a, b)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
         b = input_tokens["b"]["value"]
-        return {"value": {"value": a + b, "traits": input_tokens["a"]["traits"]}}
+        traits = entity.upper(input_tokens["a"]["traits"], input_tokens["b"]["traits"])
+        return {"value": {"value": a + b, "traits": traits}}
 
 class SubNode(BuiltinNode):
 
@@ -324,12 +325,13 @@ class SubNode(BuiltinNode):
         self._add_input("a", entity.Array | entity.Real, expand=True)
         self._add_input("b", entity.Array | entity.Real, expand=True)
         self._add_output("value", entity.Array | entity.Real, expand=True)
-        self.set_io_mapping("value", "a")
+        self.set_io_mapping("value", "upper(a, b)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
         b = input_tokens["b"]["value"]
-        return {"value": {"value": a - b, "traits": input_tokens["a"]["traits"]}}
+        traits = entity.upper(input_tokens["a"]["traits"], input_tokens["b"]["traits"])
+        return {"value": {"value": a + b, "traits": traits}}
 
 class DisplayNode(BuiltinNode):
 

@@ -2,6 +2,9 @@ import inspect
 import types
 import typing
 import importlib
+import itertools
+import functools
+
 
 class Entity:
 
@@ -52,7 +55,7 @@ def is_acceptable(one, another):
         else:
             return False
     else:
-        assert False, "Never reach here"
+        assert False, f"Never reach here: {another} ({type(another)})"
 
 is_subclass_of = is_acceptable
 
@@ -82,18 +85,59 @@ class Float(Scalar): pass
 
 class Array(Data, typing.Generic[typing.TypeVar("T")]): pass
 
-# class Array96(Array): pass
-
-ArrayLike = Plate96 | Array
+ArrayLike = Plate96 | Array  # deprecated
 Real = Integer | Float
 
-def integer_or_float(*types):
-    assert len(types) > 0
-    for x in types:
-        if x == Float:
-            return Float
-        assert x == Integer
-    return Integer
+def first_arg(x):
+    assert isinstance(x, typing._GenericAlias)
+    return x.__args__[0]
+
+def is_union(x):
+    return isinstance(x, types.UnionType) or isinstance(x, typing._UnionGenericAlias)
+
+def is_group(x):
+    return isinstance(x, typing._GenericAlias) and x.__origin__ == Group
+
+def is_array(x):
+    return isinstance(x, typing._GenericAlias) and x.__origin__ == Array
+
+#TODO: Only numbers are supported.
+_POSSIBLE_TRAITS = (Integer, Float, Array[Integer], Array[Float], Group[Integer], Group[Float], Group[Array[Integer]], Group[Array[Float]])
+
+def primitive_upper(x, y):
+    assert x in _POSSIBLE_TRAITS, x
+    assert y in _POSSIBLE_TRAITS, y
+
+    if is_group(x) or is_group(y):
+        return Group[primitive_upper(x.__args__[0] if is_group(x) else x, y.__args__[0] if is_group(y) else y)]
+    elif is_array(x) or is_array(y):
+        return Array[primitive_upper(x.__args__[0] if is_array(x) else x, y.__args__[0] if is_array(y) else y)]
+    elif x == Float or y == Float:
+        return Float
+    else:
+        assert x == Integer, x
+        assert y == Integer, y
+        return Integer
+
+def expand_to_primitives(x):
+    a = tuple(y for y in _POSSIBLE_TRAITS if is_acceptable(y, x))
+    assert len(a) > 0, x
+    return a
+
+def _upper(x, y):
+    assert isinstance(x, tuple)
+    assert isinstance(y, tuple)
+    a = tuple(set(primitive_upper(x_, y_) for x_, y_ in itertools.product(x, y)))
+    assert len(a) > 0, f"upper: {x}, {y}"
+    # print(f"upper: {x}, {y}, {a} ({len(a)})")
+    return a
+
+def upper(*traits):
+    assert len(traits) > 0
+    a = tuple(functools.reduce(_upper, (expand_to_primitives(x) for x in traits)))
+    if len(a) == 1:
+        return a[0]
+    return typing.Union(a)
 
 def get_categories():
     return {
