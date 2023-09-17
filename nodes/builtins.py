@@ -56,7 +56,7 @@ class ServeNode(input_node_base(entity.Labware, {"Plate (96-well)": entity.Plate
     def _execute(self, input_tokens):
         assert len(input_tokens) == 0, input_tokens
         traits = self.get_port_traits("value")  # an output port
-        assert entity.is_subclass_of(traits, entity.Object), traits
+        assert entity.is_acceptable(traits, entity.Object), traits
         value = {'value': uuid.uuid4(), 'traits': traits}
         return {"value": value}
 

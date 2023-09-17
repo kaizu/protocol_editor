@@ -153,10 +153,10 @@ def trait_node_base(cls):
                 traits = traits | wrap_traits(traits)
                 self.__expandables.append(name)
 
-            assert not optional or entity.is_subclass_of(traits, entity.Data)
-            if entity.is_subclass_of(traits, entity.Object):
+            assert not optional or entity.is_acceptable(traits, entity.Data)
+            if entity.is_acceptable(traits, entity.Object):
                 self.add_input(name, multi_input=False, painter_func=draw_square_port)
-            elif entity.is_subclass_of(traits, entity.Data):
+            elif entity.is_acceptable(traits, entity.Data):
                 self.add_input(name, color=(180, 80, 0), multi_input=False)
             else:
                 assert False, 'Never reach here {}'.format(traits)
@@ -167,9 +167,9 @@ def trait_node_base(cls):
                 traits = traits | wrap_traits(traits)
                 self.__expandables.append(name)
 
-            if entity.is_subclass_of(traits, entity.Object):
+            if entity.is_acceptable(traits, entity.Object):
                 self.add_output(name, multi_output=False, painter_func=draw_square_port)
-            elif entity.is_subclass_of(traits, entity.Data):
+            elif entity.is_acceptable(traits, entity.Data):
                 self.add_output(name, color=(180, 80, 0), multi_output=True)
             else:
                 assert False, 'Never reach here {}'.format(traits)
@@ -197,7 +197,7 @@ def trait_node_base(cls):
             assert output_port_name in self.outputs(), output_port_name
             # assert input_port_name in self.inputs(), input_port_name
             # input_traits = super(OFPNode, self).get_port_traits(input_port_name)
-            # if not entity.is_subclass_of(input_traits, entity.Data):
+            # if not entity.is_acceptable(input_traits, entity.Data):
             #     assert (
             #         output_port_name in self.__io_mapping
             #         or sum(1 for name in self.__io_mapping.values() if name == input_port_name) == 0
@@ -363,9 +363,9 @@ class ObjectOFPNode(OFPNode):
                 else:
                     raise NotImplementedError(f"No default behavior for traits [{traits_str}]")
             else:
-                if entity.is_subclass_of(traits, entity.Data):
+                if entity.is_acceptable(traits, entity.Data):
                     value = {'value': 100, 'traits': traits}
-                elif entity.is_subclass_of(traits, entity.Object):
+                elif entity.is_acceptable(traits, entity.Object):
                     value = {'value': uuid.uuid4(), 'traits': traits}
                 else:
                     assert False, "Never reach here {}".format(traits)
@@ -388,7 +388,7 @@ class DataOFPNode(OFPNode):
                 else:
                     raise NotImplementedError(f"No default behavior for traits [{traits_str}]")
             else:
-                assert entity.is_subclass_of(traits, entity.Data)
+                assert entity.is_acceptable(traits, entity.Data)
                 value = {'value': 100, 'traits': traits}
             output_tokens[output.name()] = value
         return output_tokens

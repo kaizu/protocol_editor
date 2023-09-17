@@ -1,9 +1,16 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+from logging import getLogger
+
+logger = getLogger(__name__)
+
 import inspect
 import types
 import typing
 import importlib
 import itertools
 import functools
+
 
 class _EntityMeta(type):
     
@@ -63,8 +70,6 @@ def is_acceptable(one, another):
             return False
     else:
         assert False, f"Never reach here: {another} ({type(another)})"
-
-is_subclass_of = is_acceptable
 
 class Any(Entity): pass
 
@@ -167,20 +172,20 @@ def get_categories():
     }
 
 if __name__ == "__main__":
-    print(is_subclass_of(Array, Any))
-    print(is_subclass_of(Array, Data))
-    print(is_subclass_of(Array, Object))
-    print(is_subclass_of(Array, ArrayLike))
-    print(is_subclass_of(ArrayLike, Array))
+    print(is_acceptable(Array, Any))
+    print(is_acceptable(Array, Data))
+    print(is_acceptable(Array, Object))
+    print(is_acceptable(Array, ArrayLike))
+    print(is_acceptable(ArrayLike, Array))
 
-    print(is_subclass_of(Group[Array], Group))
-    print(is_subclass_of(Group[Array], Group[Array]))
-    print(is_subclass_of(Group[Array], Group[ArrayLike]))
-    print(is_subclass_of(Group[Array], Group[Array]))
-    print(is_subclass_of(Group, Group))
+    print(is_acceptable(Group[Array], Group))
+    print(is_acceptable(Group[Array], Group[Array]))
+    print(is_acceptable(Group[Array], Group[ArrayLike]))
+    print(is_acceptable(Group[Array], Group[Array]))
+    print(is_acceptable(Group, Group))
 
-    print(is_subclass_of(ObjectGroup[Plate96], _Spread))
-    print(is_subclass_of(ObjectGroup[Plate96], Object))
+    print(is_acceptable(ObjectGroup[Plate96], _Spread))
+    print(is_acceptable(ObjectGroup[Plate96], Object))
 
     print(Group == Group)
     print(Group[Float] == Group)

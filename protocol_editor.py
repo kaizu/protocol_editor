@@ -101,7 +101,7 @@ def verify_session(graph):
             if len(connected_ports) == 0:
                 if node.is_optional_port(port.name()):
                     pass
-                elif port.type_() == PortTypeEnum.OUT.value and entity.is_subclass_of(port_traits, entity.Data):
+                elif port.type_() == PortTypeEnum.OUT.value and entity.is_acceptable(port_traits, entity.Data):
                     pass
                 else:
                     is_valid_node = False
@@ -122,8 +122,8 @@ def verify_session(graph):
                     another_traits = another.get_port_traits(another_port.name())
                 
                 if (
-                   (port.type_() == PortTypeEnum.IN.value and not entity.is_subclass_of(another_traits, port_traits))
-                    or (port.type_() == PortTypeEnum.OUT.value and not entity.is_subclass_of(port_traits, another_traits))
+                   (port.type_() == PortTypeEnum.IN.value and not entity.is_acceptable(another_traits, port_traits))
+                    or (port.type_() == PortTypeEnum.OUT.value and not entity.is_acceptable(port_traits, another_traits))
                 ):
                     logger.info("%s %s %s; %s %s %s", node.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
                     is_valid_node = False
@@ -221,7 +221,7 @@ def declare_node(name, doc):
     def base_node_class(doc):
         for _, traits_str in doc.get('input', {}).items():
             traits, _ = evaluate_traits(traits_str)
-            if entity.is_subclass_of(traits, entity.Object):
+            if entity.is_acceptable(traits, entity.Object):
                 return ObjectOFPNode
         for _, traits_str in doc.get('output', {}).items():
             try:
@@ -229,7 +229,7 @@ def declare_node(name, doc):
             except:
                 pass  # io_mapping
             else:
-                if entity.is_subclass_of(traits, entity.Object):
+                if entity.is_acceptable(traits, entity.Object):
                     return ObjectOFPNode
         return DataOFPNode
     
