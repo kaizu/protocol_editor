@@ -65,6 +65,36 @@ class ServeNode(input_node_base(entity.Labware, {"Plate (96-well)": entity.Plate
         value = {'value': uuid.uuid4(), 'traits': traits}
         return {"value": value}
 
+class StoreLabwareNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "StoreLabware"
+
+    def __init__(self):
+        super(StoreLabwareNode, self).__init__()
+
+        self.add_text_input("where", "where", '')
+        self._add_input("in1", entity.Labware, expand=True)
+    
+    def _execute(self, input_tokens):
+        return {}
+    
+class StoreArtifactsNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "StoreArtifacts"
+
+    def __init__(self):
+        super(StoreArtifactsNode, self).__init__()
+
+        self.add_text_input("where", "where")
+        self._add_input("in1", entity.Data, expand=True)
+
+    def _execute(self, input_tokens):
+        return {}
+    
 class GroupNode(BuiltinNode):
 
     __identifier__ = "builtins"
