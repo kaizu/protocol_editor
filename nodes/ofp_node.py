@@ -11,6 +11,7 @@ from Qt import QtGui, QtCore
 from NodeGraphQt import BaseNode
 from NodeGraphQt.constants import NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
+import NodeGraphQt.errors
 
 from nodes import entity
 
@@ -280,7 +281,40 @@ def trait_node_base(cls):
         
         def _set_port_traits(self, name, traits, optional):
             self.__port_traits[name] = (traits, optional)
-        
+
+        def set_ports(self, port_data):
+            if not self.port_deletion_allowed():
+                raise NodeGraphQt.errors.PortError(
+                    'Ports cannot be set on this node because '
+                    '"set_port_deletion_allowed" is not enabled on this node.')
+
+            for port in self._inputs:
+                self._view.delete_input(port.view)
+                port.model.node = None
+            for port in self._outputs:
+                self._view.delete_output(port.view)
+                port.model.node = None
+            self._inputs = []
+            self._outputs = []
+            self._model.outputs = {}
+            self._model.inputs = {}
+
+            [self.add_input(name=port['name'],
+                            multi_input=port['multi_connection'],
+                            display_name=port['display_name'],
+                            locked=port.get('locked') or False,
+                            painter_func=(draw_square_port if entity.is_acceptable(self._get_port_traits(port['name'])[0], entity.Object) else None),  #MODIFIED
+                            )
+            for port in port_data['input_ports']]
+            [self.add_output(name=port['name'],
+                            multi_output=port['multi_connection'],
+                            display_name=port['display_name'],
+                            locked=port.get('locked') or False,
+                            painter_func=(draw_square_port if entity.is_acceptable(self._get_port_traits(port['name'])[0], entity.Object) else None),  #MODIFIED,
+                            )
+            for port in port_data['output_ports']]
+            self._view.draw_node()
+
         def _execute(self, input_tokens):  #XXX: rename this
             raise NotImplementedError()
         
