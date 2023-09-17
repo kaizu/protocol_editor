@@ -12,7 +12,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
-from nodes.ofp_node import OFPNode, expand_input_tokens
+from nodes.ofp_node import OFPNode, IONode, expand_input_tokens
 from nodes import entity
 from nodes.node_widgets import DoubleSpinBoxWidget, LabelWidget, PushButtonWidget
 
@@ -21,6 +21,41 @@ class BuiltinNode(OFPNode):
 
     def _execute(self, sim):
         raise NotImplementedError("Override this")
+
+def input_node_base(base, items):
+    class _InputNodeBase(BuiltinNode, IONode):
+
+        BASE_ENTITY_TYPE = base
+        ENTITY_TYPES = dict(items, **{'': base})
+
+        def __init__(self):
+            super(_InputNodeBase, self).__init__()
+
+            self.add_combo_menu("value", items=sorted(self.ENTITY_TYPES))
+            self._add_output("value", base)
+
+        def set_property(self, name, value, push_undo=True):
+            logger.info(f"set_property: {self}, {value} {push_undo}")
+            if name == "value":
+                traits = self.ENTITY_TYPES.get(value, self.BASE_ENTITY_TYPE)
+                self._set_port_traits("value", traits, self._get_port_traits("value")[1])
+            # print(self.get_port_traits("value"))
+            super(_InputNodeBase, self).set_property(name, value, push_undo)
+
+        def _execute(self, input_tokens):
+            pass
+            # ninputs = int(self.get_property("ninputs"))
+            # value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
+            # traits = input_tokens["in1"]["traits"]  # The first element
+            # return {"value": {"value": value, "traits": entity.Group[traits]}}
+
+    return _InputNodeBase
+
+class ServeNode(input_node_base(entity.Object, {"Plate96": entity.Plate96, "Tube": entity.Tube})):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Serve"
 
 class GroupNode(BuiltinNode):
 

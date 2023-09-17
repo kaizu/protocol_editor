@@ -69,7 +69,7 @@ def wrap_traits(entity_type):
     elif entity.is_acceptable(entity_type, entity.Data):
         return entity.Group[entity_type]
     else:
-        assert False, "Never reach here."
+        assert False, f"Never reach here [{entity_type}]"
 
 def unwrap_traits(entity_type):
     if entity.is_acceptable(entity_type, entity._Spread):
@@ -82,7 +82,6 @@ def evaluate_traits(expression, inputs=None):
     # print(f"inputs -> {inputs}")
     # print(f"params -> {params}")
     locals = dict(inputs, **params)
-    # locals.update({"wrap": wrap_traits_if, "unwrap": unwrap_traits})
     locals.update({"upper": entity.upper, "first_arg": entity.first_arg})
     code = compile(expression, "<string>", "eval")
     is_static = all(name in params for name in code.co_names)
@@ -120,6 +119,8 @@ def expand_input_tokens(input_tokens, defaults=None):
                 for (name, token) in input_tokens.items()
             }
 
+class IONode: pass
+
 def trait_node_base(cls):
     class _TraitNodeBase(cls):
 
@@ -130,6 +131,8 @@ def trait_node_base(cls):
             self.__io_mapping = {}
             self.__default_value = {}
             self.__expandables = []
+
+            self.create_property("message", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
 
         def is_optional_port(self, name):
             return self.__port_traits[name][1]
@@ -239,6 +242,12 @@ def trait_node_base(cls):
                 port_traits = evaluate_traits(expression, _input_traits)[0]
                 return wrap_traits_if(port_traits, (input_traits[name] for name in self.__expandables if name in input_traits))
             return self.__port_traits[name][0]
+        
+        def _get_port_traits(self, name):
+            return self.__port_traits[name]
+        
+        def _set_port_traits(self, name, traits, optional):
+            self.__port_traits[name] = (traits, optional)
         
         def _execute(self, input_tokens):  #XXX: rename this
             raise NotImplementedError()
