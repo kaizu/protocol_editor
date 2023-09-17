@@ -22,7 +22,7 @@ from NodeGraphQt import (
 from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
-from nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits
+from nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits, traits_str
 from nodes.group import OFPGroupNode, ForEachNode
 import nodes.entity as entity
 import nodes.builtins
@@ -127,7 +127,7 @@ def verify_session(graph):
                 ):
                     logger.info("%s %s %s; %s %s %s", node.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
                     is_valid_node = False
-                    error_msg = f"Port [{port.name()}] traits mismatches. [{port_traits}] expected. [{another_traits}] given"
+                    error_msg = f"Port [{port.name()}] traits mismatches. [{traits_str(port_traits)}] expected. [{traits_str(another_traits)}] given"
                     break
 
         if isinstance(node, OFPGroupNode):
@@ -143,11 +143,11 @@ def verify_session(graph):
 
         if not is_valid_node:
             node.set_node_status(NodeStatusEnum.ERROR)
-            node.set_property("message", error_msg, push_undo=False)
+            node.message = error_msg
             is_valid_graph = False
         elif node.get_node_status() == NodeStatusEnum.ERROR:
             node.set_node_status(NodeStatusEnum.READY)
-            node.set_property("message", "", push_undo=False)
+            node.message = ''
 
     # logger.info(graph.serialize_session())
     return is_valid_graph

@@ -13,7 +13,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
-from nodes.ofp_node import OFPNode, IONode, expand_input_tokens
+from nodes.ofp_node import OFPNode, IONode, expand_input_tokens, traits_str
 from nodes import entity
 from nodes.node_widgets import DoubleSpinBoxWidget, LabelWidget, PushButtonWidget
 
@@ -28,21 +28,26 @@ def input_node_base(base, items):
 
     class _InputNodeBase(BuiltinNode, IONode):
 
+        OUTPUT_PORT_NAME = "value"
         BASE_ENTITY_TYPE = base
         ENTITY_TYPES = dict(items, **{'': base})
 
         def __init__(self):
             super(_InputNodeBase, self).__init__()
 
-            self.add_combo_menu("value", items=sorted(self.ENTITY_TYPES))
-            self._add_output("value", base)
+            self.add_combo_menu(self.OUTPUT_PORT_NAME, items=sorted(self.ENTITY_TYPES))
+            self._add_output(self.OUTPUT_PORT_NAME, base)
 
         def set_property(self, name, value, push_undo=True):
             logger.info(f"set_property: {self}, {value} {push_undo}")
-            if name == "value":
+            
+            if name == self.OUTPUT_PORT_NAME:
                 traits = self.ENTITY_TYPES.get(value, self.BASE_ENTITY_TYPE)
-                self._set_port_traits("value", traits, self._get_port_traits("value")[1])
-            # print(self.get_port_traits("value"))
+                self._set_port_traits(self.OUTPUT_PORT_NAME, traits, self._get_port_traits(self.OUTPUT_PORT_NAME)[1])
+                # print(self.get_port_traits(self.OUTPUT_PORT_NAME))
+
+                self._set_port_tooltip(self.get_output(self.OUTPUT_PORT_NAME), f" [{traits_str(traits)}]")
+
             super(_InputNodeBase, self).set_property(name, value, push_undo)
 
     return _InputNodeBase

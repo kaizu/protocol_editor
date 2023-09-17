@@ -15,8 +15,8 @@ import functools
 class _EntityMeta(type):
     
     def __instancecheck__(self, obj):
-        if self is Any:
-            raise TypeError("Entity cannot be used with isinstance()")
+        # if self is Any:
+        #     raise TypeError("Entity cannot be used with isinstance()")
         return super().__instancecheck__(obj)
 
     def __repr__(self):
@@ -162,7 +162,7 @@ def upper(*traits):
     a = tuple(functools.reduce(_upper, (expand_to_primitives(x) for x in traits)))
     if len(a) == 1:
         return a[0]
-    return typing.Union(a)
+    return typing.Union[a]
 
 def get_categories():
     return {

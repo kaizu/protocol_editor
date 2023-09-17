@@ -58,6 +58,11 @@ def draw_square_port(painter, rect, info):
 
     painter.restore()
 
+def traits_str(traits):
+    text = str(traits)
+    text = text.replace('typing.', '').replace('nodes.entity.', '')
+    return text
+
 def wrap_traits_if(original_type, entity_types):
     if any(entity.is_acceptable(entity_type, entity._Spread) for entity_type in entity_types):
         return wrap_traits(original_type)
@@ -134,6 +139,20 @@ def trait_node_base(cls):
 
             self.create_property("message", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
 
+        @property
+        def message(self):
+            return self.get_proprety('message')
+
+        @message.setter
+        def message(self, text):
+            self.set_property('message', text, push_undo=False)
+
+            node_item = self.view    
+            tooltip = 'node: {}'.format(node_item.name)
+            if len(text) > 0:
+                tooltip += f' Message: "{text}"'
+            node_item.setToolTip(tooltip)
+
         def is_optional_port(self, name):
             return self.__port_traits[name][1]
 
@@ -148,6 +167,15 @@ def trait_node_base(cls):
                 return self.__default_value  # not protected
             return self.__defalt_value.get(name, None)
         
+        def _set_port_tooltip(self, port, text=""):
+            port_item = port.view
+            conn_type = 'multi' if port_item.multi_connection else 'single'
+            tooltip = '{}: ({})'.format(port_item.name, conn_type)
+            if port_item._locked:
+                tooltip += ' (L)'
+            tooltip += text
+            port_item.setToolTip(tooltip)
+
         def _add_input(self, name, traits, *, optional=False, expand=False):
             if expand:
                 traits = traits | wrap_traits(traits)
@@ -160,7 +188,9 @@ def trait_node_base(cls):
                 self.add_input(name, color=(180, 80, 0), multi_input=False)
             else:
                 assert False, 'Never reach here {}'.format(traits)
+
             self.__port_traits[name] = (traits, optional)
+            self._set_port_tooltip(self.get_input(name), f" [{traits_str(traits)}]")
 
         def _add_output(self, name, traits, *, expand=False):
             if expand:
@@ -173,7 +203,9 @@ def trait_node_base(cls):
                 self.add_output(name, color=(180, 80, 0), multi_output=True)
             else:
                 assert False, 'Never reach here {}'.format(traits)
+
             self.__port_traits[name] = (traits, False)
+            self._set_port_tooltip(self.get_output(name), f" [{traits_str(traits)}]")
         
         def delete_input(self, name):
             if name in self.__port_traits:
