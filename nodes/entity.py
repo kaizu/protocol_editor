@@ -95,6 +95,14 @@ class Float(Scalar): pass
 
 Real = Integer | Float
 
+class String(Scalar): pass
+
+# Term
+
+class Class(String): pass
+
+class LiquidClass(Class): pass
+
 # Array
 
 class Array(Data, typing.Generic[typing.TypeVar("T")]): pass

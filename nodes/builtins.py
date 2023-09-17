@@ -121,7 +121,7 @@ class ObjectGroupNode(BuiltinNode):
 
         self._add_input("in1", entity.Object)
         self._add_output("value", entity.ObjectGroup[entity.Object])
-        self.set_io_mapping("value", "ObjectGroup[in1]")
+        self.set_io_mapping("value", "ObjectGroup[in1]")  #TODO:
 
     def _execute(self, input_tokens):
         ninputs = int(self.get_property("ninputs"))
@@ -178,7 +178,23 @@ class FloatNode(BuiltinNode):
     
     def _execute(self, input_tokens):
         return {"value": {"value": float(self.get_property("value")), "traits": entity.Float}}
+
+class LiquidClassNode(BuiltinNode):  # IONode
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "LiquidClass"
+
+    def __init__(self):
+        super(LiquidClassNode, self).__init__()
+
+        items = ['Pure Water', 'Red Water', 'Blue Water']
+        self.add_combo_menu("value", items=items)
+        self._add_output("value", entity.LiquidClass)
     
+    def _execute(self, input_tokens):
+        return {"value": {"value": self.get_property("value"), "traits": entity.LiquidClass}}
+
 class FullNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -482,15 +498,22 @@ class DispenseLiquid96WellsNode(BuiltinNode):
 
         self._add_input("in1", entity.Plate96, expand=True)
         self._add_output("out1", entity.Plate96, expand=True)
-        self._add_input("channel", entity.Integer, optional=True, expand=True)
+        self._add_input("channel", entity.Integer | entity.LiquidClass, optional=True, expand=True)
         self._add_input("volume", entity.Array[entity.Real], expand=True)
         self.set_io_mapping("out1", "in1")
 
         self.set_default_value("channel", 0, entity.Integer)
+
+        self.__channels = {'Pure Water': 0, 'Red Water': 1, 'Blue Water': 2}
     
     def _execute(self, input_tokens):
         data = input_tokens["volume"]["value"].astype(int).resize(96)
-        channel = input_tokens["channel"]["value"]
+
+        if input_tokens["channel"]["traits"] == entity.LiquidClass:
+            channel = self.__channels[input_tokens["channel"]["value"]]
+        else:
+            assert input_tokens["channel"]["traits"] == entity.Integer
+            channel = input_tokens["channel"]["value"]
         params = {'data': data, 'channel': channel}
         logger.info(f"DispenseLiquid96WellsNode execute with {str(params)}")
         # _, opts = fluent.experiments.dispense_liquid_96wells(**params)
