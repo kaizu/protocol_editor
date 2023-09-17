@@ -2,6 +2,7 @@ from logging import getLogger
 
 logger = getLogger(__name__)
 
+import uuid
 import numpy
 
 from NodeGraphQt.constants import NodePropWidgetEnum
@@ -23,6 +24,8 @@ class BuiltinNode(OFPNode):
         raise NotImplementedError("Override this")
 
 def input_node_base(base, items):
+    assert all(entity.is_acceptable(traits, base) for traits in items.values())
+
     class _InputNodeBase(BuiltinNode, IONode):
 
         BASE_ENTITY_TYPE = base
@@ -42,20 +45,20 @@ def input_node_base(base, items):
             # print(self.get_port_traits("value"))
             super(_InputNodeBase, self).set_property(name, value, push_undo)
 
-        def _execute(self, input_tokens):
-            pass
-            # ninputs = int(self.get_property("ninputs"))
-            # value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
-            # traits = input_tokens["in1"]["traits"]  # The first element
-            # return {"value": {"value": value, "traits": entity.Group[traits]}}
-
     return _InputNodeBase
 
-class ServeNode(input_node_base(entity.Object, {"Plate96": entity.Plate96, "Tube": entity.Tube})):
+class ServeNode(input_node_base(entity.Labware, {"Plate (96-well)": entity.Plate96, "Tube (5ml)": entity.Tube5})):
 
     __identifier__ = "builtins"
 
     NODE_NAME = "Serve"
+
+    def _execute(self, input_tokens):
+        assert len(input_tokens) == 0, input_tokens
+        traits = self.get_port_traits("value")  # an output port
+        assert entity.is_subclass_of(traits, entity.Object), traits
+        value = {'value': uuid.uuid4(), 'traits': traits}
+        return {"value": value}
 
 class GroupNode(BuiltinNode):
 

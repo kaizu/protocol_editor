@@ -5,11 +5,18 @@ import importlib
 import itertools
 import functools
 
+class _EntityMeta(type):
+    
+    def __instancecheck__(self, obj):
+        if self is Any:
+            raise TypeError("Entity cannot be used with isinstance()")
+        return super().__instancecheck__(obj)
 
-class Entity:
+    def __repr__(self):
+        return f'{self.__module__}.{self.__qualname__}'
+        # return super().__repr__()  # respect to subclasses
 
-    def __new__(cls, *args, **kwargs):
-        raise RuntimeError("Do not instantiate.")
+class Entity(metaclass=_EntityMeta): pass
 
 def is_category(cls):
     if inspect.isclass(cls):
@@ -65,28 +72,41 @@ class Object(Any): pass
 
 class Data(Any): pass
 
+# _Spread
+
 class _Spread(Entity): pass
 
 class Group(Data, _Spread, typing.Generic[typing.TypeVar("T")]): pass
 
 class ObjectGroup(Object, _Spread, typing.Generic[typing.TypeVar("T")]): pass
 
+# Scalar
+
 class Scalar(Data): pass
-
-class Tube(Object): pass
-
-class Plate(Object): pass
-
-class Plate96(Plate): pass
 
 class Integer(Scalar): pass
 
 class Float(Scalar): pass
 
+Real = Integer | Float
+
+# Array
+
 class Array(Data, typing.Generic[typing.TypeVar("T")]): pass
 
+# Labware
+
+class Labware(Object): pass
+
+class Tube(Labware): pass
+
+class Tube5(Tube): pass
+
+class Plate(Labware): pass
+
+class Plate96(Plate): pass
+
 ArrayLike = Plate96 | Array  # deprecated
-Real = Integer | Float
 
 def first_arg(x):
     assert isinstance(x, typing._GenericAlias)
