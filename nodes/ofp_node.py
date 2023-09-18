@@ -3,13 +3,14 @@
 from logging import getLogger
 
 import uuid
+import itertools
 from collections import deque
 from enum import IntEnum, auto
 
 from Qt import QtGui, QtCore
 
 from NodeGraphQt import BaseNode
-from NodeGraphQt.constants import NodePropWidgetEnum
+from NodeGraphQt.constants import NodePropWidgetEnum, PortTypeEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 import NodeGraphQt.errors
 
@@ -303,6 +304,60 @@ def trait_node_base(cls):
             for port in port_data['output_ports']]
             self._view.draw_node()
 
+        def check(self):
+            is_valid = True
+
+            # if isinstance(node, ObjectOFPNode):
+            #     station = graph.allocate_station(node)
+            #     node.set_property("station", station, push_undo=False)
+            #     is_valid = is_valid and station != ""
+
+            for port in itertools.chain(
+                self.input_ports(), self.output_ports()
+            ):
+                port_traits = self.get_port_traits(port.name())
+
+                connected_ports = port.connected_ports()
+                if len(connected_ports) == 0:
+                    if self.is_optional_port(port.name()):
+                        pass
+                    elif port.type_() == PortTypeEnum.OUT.value and entity.is_acceptable(port_traits, entity.Data):
+                        pass
+                    else:
+                        is_valid = False
+                        error_msg = f"Port [{port.name()}] is disconnected"
+                        break
+
+                for another_port in connected_ports:
+                    another = another_port.node()
+
+                    if isinstance(another, PortInputNode):
+                        parent_port = another.parent_port
+                        another_traits = parent_port.node()._get_connected_traits(parent_port)
+                    elif isinstance(another, PortOutputNode):
+                        parent_port = another.parent_port
+                        another_traits = parent_port.node().get_port_traits(parent_port.name())
+                    else:
+                        # assert isinstance(another, (OFPNode, OFPGroupNode))
+                        another_traits = another.get_port_traits(another_port.name())
+                    
+                    if (
+                    (port.type_() == PortTypeEnum.IN.value and not entity.is_acceptable(another_traits, port_traits))
+                        or (port.type_() == PortTypeEnum.OUT.value and not entity.is_acceptable(port_traits, another_traits))
+                    ):
+                        logger.info("%s %s %s; %s %s %s", self.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
+                        is_valid = False
+                        error_msg = f"Port [{port.name()}] traits mismatches. [{traits_str(port_traits)}] expected. [{traits_str(another_traits)}] given"
+                        break
+
+            if not is_valid:
+                self.set_node_status(NodeStatusEnum.ERROR)
+                self.message = error_msg
+            elif self.get_node_status() == NodeStatusEnum.ERROR:
+                self.set_node_status(NodeStatusEnum.READY)
+                self.message = ''
+            return is_valid
+            
         def _execute(self, input_tokens):  #XXX: rename this
             raise NotImplementedError()
         

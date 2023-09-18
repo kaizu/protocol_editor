@@ -3,7 +3,6 @@
 from logging import getLogger
 
 import copy
-import itertools
 import functools
 import signal
 import inspect
@@ -84,53 +83,9 @@ def verify_session(graph):
         else:
             continue
 
-        is_valid_node = True
-        error_msg = ""  # error message
+        is_valid_node = node.check()
 
-        # if isinstance(node, ObjectOFPNode):
-        #     station = graph.allocate_station(node)
-        #     node.set_property("station", station, push_undo=False)
-        #     is_valid_node = is_valid_node and station != ""
-
-        for port in itertools.chain(
-            node.input_ports(), node.output_ports()
-        ):
-            port_traits = node.get_port_traits(port.name())
-
-            connected_ports = port.connected_ports()
-            if len(connected_ports) == 0:
-                if node.is_optional_port(port.name()):
-                    pass
-                elif port.type_() == PortTypeEnum.OUT.value and entity.is_acceptable(port_traits, entity.Data):
-                    pass
-                else:
-                    is_valid_node = False
-                    error_msg = f"Port [{port.name()}] is disconnected"
-                    break
-
-            for another_port in connected_ports:
-                another = another_port.node()
-
-                if isinstance(another, PortInputNode):
-                    parent_port = another.parent_port
-                    another_traits = parent_port.node()._get_connected_traits(parent_port)
-                elif isinstance(another, PortOutputNode):
-                    parent_port = another.parent_port
-                    another_traits = parent_port.node().get_port_traits(parent_port.name())
-                else:
-                    assert isinstance(another, (OFPNode, OFPGroupNode))
-                    another_traits = another.get_port_traits(another_port.name())
-                
-                if (
-                   (port.type_() == PortTypeEnum.IN.value and not entity.is_acceptable(another_traits, port_traits))
-                    or (port.type_() == PortTypeEnum.OUT.value and not entity.is_acceptable(port_traits, another_traits))
-                ):
-                    logger.info("%s %s %s; %s %s %s", node.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
-                    is_valid_node = False
-                    error_msg = f"Port [{port.name()}] traits mismatches. [{traits_str(port_traits)}] expected. [{traits_str(another_traits)}] given"
-                    break
-
-        if isinstance(node, OFPGroupNode):
+        if is_valid_node and isinstance(node, OFPGroupNode):
             subgraph = node.get_sub_graph()
             if subgraph is not None:
                 is_valid_subgraph = verify_session(subgraph)
@@ -141,13 +96,12 @@ def verify_session(graph):
                 error_msg = "No subgraph"
                 is_valid_node = False
 
+            if not is_valid_node:
+                node.set_node_status(NodeStatusEnum.ERROR)
+                node.message = error_msg
+
         if not is_valid_node:
-            node.set_node_status(NodeStatusEnum.ERROR)
-            node.message = error_msg
             is_valid_graph = False
-        elif node.get_node_status() == NodeStatusEnum.ERROR:
-            node.set_node_status(NodeStatusEnum.READY)
-            node.message = ''
 
     # logger.info(graph.serialize_session())
     return is_valid_graph

@@ -39,7 +39,7 @@ class OFPGroupNode(ofp_node_base(GroupNode)):
 
     def run(self, input_tokens):
         super(OFPGroupNode, self).run(input_tokens)
-
+    
     def execute(self, input_tokens):
         raise NotImplementedError()
     

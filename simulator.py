@@ -45,7 +45,7 @@ class Simulator:
                     self.__tokens[new_key] = value
             # if send:
             #     del self.__tokens[key]
-            del self.__tokens[key]  # An object might lost
+            del self.__tokens[key]  #XXX: An object might lost
 
     def run(self, node: OFPNode, graph_id: int) -> None:
         logger.info('run %s', node)

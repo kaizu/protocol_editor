@@ -14,7 +14,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
-from nodes.ofp_node import OFPNode, IONode, expand_input_tokens, traits_str
+from nodes.ofp_node import NodeStatusEnum, OFPNode, IONode, expand_input_tokens, traits_str
 from nodes import entity
 from nodes.node_widgets import DoubleSpinBoxWidget, LabelWidget, PushButtonWidget
 
@@ -122,6 +122,20 @@ class GroupNode(BuiltinNode):
         self._add_input("in1", entity.Data)
         self._add_output("value", entity.Group[entity.Data], expression="Group[in1]")
 
+    def check(self):
+        logger.info("GroupNode: check")
+        if not super(GroupNode, self).check():
+            return False
+        
+        traits = self._get_connected_traits(self.get_input('in1'))
+        for i in range(1, len(self.input_ports())):
+            another_traits = self._get_connected_traits(self.get_input(f'in{i+1}'))
+            if another_traits != traits:
+                self.set_node_status(NodeStatusEnum.ERROR)
+                self.message = f"Port [in{i+1}] has wrong traits [{traits_str(another_traits)}]. [{traits_str(traits)}] expected"
+                return False
+        return True
+
     def _execute(self, input_tokens):
         ninputs = int(self.get_property("ninputs"))
         value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
@@ -158,8 +172,21 @@ class ObjectGroupNode(BuiltinNode):
         self.set_port_deletion_allowed(True)
 
         self._add_input("in1", entity.Object)
-        self._add_output("value", entity.ObjectGroup[entity.Object], expression="ObjectGroup[in1]")  #TODO:
+        self._add_output("value", entity.ObjectGroup[entity.Object], expression="ObjectGroup[in1]")
 
+    def check(self):
+        if not super(ObjectGroupNode, self).check():
+            return False
+        
+        traits = self._get_connected_traits(self.get_input('in1'))
+        for i in range(1, len(self.input_ports())):
+            another_traits = self._get_connected_traits(self.get_input(f'in{i+1}'))
+            if another_traits != traits:
+                self.set_node_status(NodeStatusEnum.ERROR)
+                self.message = f"Port [in{i+1}] has wrong traits [{traits_str(another_traits)}]. [{traits_str(traits)}] expected"
+                return False
+        return True
+    
     def _execute(self, input_tokens):
         ninputs = int(self.get_property("ninputs"))
         value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
