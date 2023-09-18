@@ -3,6 +3,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 import uuid
+import datetime
 import numpy
 
 from NodeGraphQt.constants import NodePropWidgetEnum
@@ -62,7 +63,7 @@ class ServeNode(input_node_base(entity.Labware, {"Plate (96-well)": entity.Plate
         assert len(input_tokens) == 0, input_tokens
         traits = self.get_port_traits("value")  # an output port
         assert entity.is_acceptable(traits, entity.Object), traits
-        value = {'value': uuid.uuid4(), 'traits': traits}
+        value = {'value': {"id": uuid.uuid4(), "date": str(datetime.datetime.now())}, 'traits': traits}
         return {"value": value}
 
 class StoreLabwareNode(BuiltinNode):
@@ -76,8 +77,12 @@ class StoreLabwareNode(BuiltinNode):
 
         self.add_text_input("where", "where", '')
         self._add_input("in1", entity.Labware, expand=True)
+
+        self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
     def _execute(self, input_tokens):
+        assert "in1" in input_tokens
+        self.set_property("in1", str(input_tokens["in1"]))
         return {}
     
 class StoreArtifactsNode(BuiltinNode):
@@ -92,7 +97,11 @@ class StoreArtifactsNode(BuiltinNode):
         self.add_text_input("where", "where")
         self._add_input("in1", entity.Data, expand=True)
 
+        self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
+    
     def _execute(self, input_tokens):
+        assert "in1" in input_tokens
+        self.set_property("in1", str(input_tokens["in1"]))
         return {}
     
 class GroupNode(BuiltinNode):

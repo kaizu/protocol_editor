@@ -114,7 +114,7 @@ def expand_input_tokens(input_tokens, defaults=None):
         yield input_tokens
     else:
         max_length = max(len(token["value"]) for token in group_input_tokens.values())
-        assert all(not entity.is_acceptable(token["traits"], entity.Object) for (name, token) in input_tokens.items() if name not in group_input_tokens), f"Object is not copyable [{input_tokens}]"
+        # assert all(not entity.is_acceptable(token["traits"], entity.Object) for (name, token) in input_tokens.items() if name not in group_input_tokens), f"Object is not copyable [{input_tokens}]"
         for i in range(max_length):
             yield {
                 name: (
@@ -209,20 +209,6 @@ def trait_node_base(cls):
             if expression is not None:
                 self.__io_mapping[name] = expression
             self._set_port_tooltip(self.get_output(name), f" [{traits_str(traits)}]")
-
-        # def set_io_mapping(self, output_port_name, expression):
-        #     assert output_port_name in self.outputs(), output_port_name
-        #     # assert input_port_name in self.inputs(), input_port_name
-        #     # input_traits = super(OFPNode, self).get_port_traits(input_port_name)
-        #     # if not entity.is_acceptable(input_traits, entity.Data):
-        #     #     assert (
-        #     #         output_port_name in self.__io_mapping
-        #     #         or sum(1 for name in self.__io_mapping.values() if name == input_port_name) == 0
-        #     #     ), "{} {} {}".format(output_port_name, input_port_name, input_traits)
-        #     self._set_io_mapping(output_port_name, expression)
-
-        # def _set_io_mapping(self, output_port_name, expression):
-        #     self.__io_mapping[output_port_name] = expression
 
         def delete_input(self, name):
             if name in self.__port_traits:
@@ -327,14 +313,32 @@ def trait_node_base(cls):
                 # no expansion
                 return self._execute(input_tokens)
             else:
-                results = [
-                    self._execute(_input_tokens)
-                    for _input_tokens in expand_input_tokens(input_tokens)
+                # results = [
+                #     self._execute(_input_tokens)
+                #     for _input_tokens in expand_input_tokens(input_tokens)
+                # ]
+
+                loop_items = [
+                    name
+                    for name, token in input_tokens.items()
+                    if entity.is_acceptable(token["traits"], entity.Object) and not entity.is_acceptable(token["traits"], entity._Spread)
                 ]
+                # assert all(name in self.__io_mapping and self.__io_mapping[name] in input_tokens for name in loop_items)
+                results = []
+                # updates = {}
+                for _input_tokens in expand_input_tokens(input_tokens):
+                    # _input_tokens.update(updates)
+                    output_tokens = self._execute(_input_tokens)
+                    results.append(output_tokens)
+                    # updates = {self.__io_mapping[name]: token for name, token in output_tokens.items() if name in loop_items}
+
                 return {
                     output_port.name(): {
                         "value": [result[output_port.name()]["value"] for result in results],
                         "traits": wrap_traits(results[0][output_port.name()]["traits"])
+                    } if output_port.name() not in loop_items else {
+                        "value": results[-1][output_port.name()]["value"],
+                        "traits": results[0][output_port.name()]["traits"]
                     }
                     for output_port in self.output_ports()
                 }
@@ -434,7 +438,7 @@ class ObjectOFPNode(OFPNode):
                 if entity.is_acceptable(traits, entity.Data):
                     value = {'value': 100, 'traits': traits}
                 elif entity.is_acceptable(traits, entity.Object):
-                    value = {'value': uuid.uuid4(), 'traits': traits}
+                    value = {'value': {"id": uuid.uuid4()}, 'traits': traits}
                 else:
                     assert False, "Never reach here {}".format(traits)
             output_tokens[output.name()] = value
