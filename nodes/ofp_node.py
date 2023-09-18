@@ -356,7 +356,7 @@ def ofp_node_base(cls):
             self.output_queue = deque()
 
         def update_color(self):
-            logger.info("update_color %s", self)
+            logger.debug("update_color %s", self)
 
             value = self.get_node_status()
             if value == NodeStatusEnum.READY:

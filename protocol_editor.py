@@ -160,7 +160,9 @@ def _main_loop(graph, sim):
         node for node in graph.all_nodes()
         if isinstance(node, (OFPNode, OFPGroupNode))
     ]
-
+    if sim.num_tokens() == 0 and all(node.get_node_status() not in (NodeStatusEnum.WAITING, NodeStatusEnum.RUNNING) for node in all_nodes):
+        return
+    
     for node in all_nodes:
         node.update_node_status()
     
@@ -293,7 +295,7 @@ class MyNodeGraph(NodeGraph):
         verify_session(self)
 
     def _property_changed(self, node, name, value):
-        logger.info("property_changed %s %s %s", node, name, value)
+        logger.debug("property_changed %s %s %s", node, name, value)
         if isinstance(node, GraphPropertyNode) and self.__mymodel.has_property(name):
             self.set_property(name, value)
             verify_session(self)
