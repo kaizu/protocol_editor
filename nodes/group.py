@@ -59,8 +59,7 @@ class ForEachNode(OFPGroupNode):
         self.set_port_deletion_allowed(True)
 
         self._add_input("in1", entity.Data)
-        self._add_output("out1", entity.Data)
-        self.set_io_mapping("out1", "in1")
+        self._add_output("out1", entity.Data, expression="in1")
 
     def on_value_changed(self, *args, **kwargs):
         n = int(args[0])
@@ -68,8 +67,7 @@ class ForEachNode(OFPGroupNode):
         if n > nports:
             for i in range(nports, n):
                 self._add_input(f"in{i+1}", entity.Data)
-                self._add_output(f"out{i+1}", entity.Data)
-                self.set_io_mapping(f"out{i+1}", f"in{i+1}")
+                self._add_output(f"out{i+1}", entity.Data, expression=f"in{i+1}")
         elif n < nports:
             for i in range(nports, n, -1):
                 port = self.get_input(f"in{i}")

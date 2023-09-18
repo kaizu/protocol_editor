@@ -111,8 +111,7 @@ class GroupNode(BuiltinNode):
         self.set_port_deletion_allowed(True)
 
         self._add_input("in1", entity.Data)
-        self._add_output("value", entity.Group[entity.Data])
-        self.set_io_mapping("value", "Group[in1]")
+        self._add_output("value", entity.Group[entity.Data], expression="Group[in1]")
 
     def _execute(self, input_tokens):
         ninputs = int(self.get_property("ninputs"))
@@ -150,8 +149,7 @@ class ObjectGroupNode(BuiltinNode):
         self.set_port_deletion_allowed(True)
 
         self._add_input("in1", entity.Object)
-        self._add_output("value", entity.ObjectGroup[entity.Object])
-        self.set_io_mapping("value", "ObjectGroup[in1]")  #TODO:
+        self._add_output("value", entity.ObjectGroup[entity.Object], expression="ObjectGroup[in1]")  #TODO:
 
     def _execute(self, input_tokens):
         ninputs = int(self.get_property("ninputs"))
@@ -235,10 +233,9 @@ class FullNode(BuiltinNode):
         super(FullNode, self).__init__()
         self._add_input("size", entity.Integer, expand=True)
         self._add_input("fill_value", entity.Real, optional=True, expand=True)
-        self._add_output("value", entity.Array[entity.Real], expand=True)
+        self._add_output("value", entity.Array[entity.Real], expand=True, expression="Array[fill_value]")
 
         self.set_default_value("fill_value", 0.0, entity.Float)
-        self.set_io_mapping("value", "Array[fill_value]")
 
     def _execute(self, input_tokens):
         fill_value = input_tokens["fill_value"]["value"]
@@ -256,11 +253,10 @@ class RangeNode(BuiltinNode):
         self._add_input("start", entity.Real, optional=True, expand=True)
         self._add_input("stop", entity.Real, expand=True)
         self._add_input("step", entity.Real, optional=True, expand=True)
-        self._add_output("value", entity.Array[entity.Real], expand=True)
+        self._add_output("value", entity.Array[entity.Real], expand=True, expression="Array[upper(start, stop, step)]")
 
         self.set_default_value("start", 0, entity.Integer)
         self.set_default_value("step", 1, entity.Integer)
-        self.set_io_mapping("value", "Array[upper(start, stop, step)]")  #FIXME
     
     def _execute(self, input_tokens):
         start = input_tokens["start"]["value"]
@@ -280,11 +276,10 @@ class LinspaceNode(BuiltinNode):
         self._add_input("start", entity.Real, optional=True, expand=True)
         self._add_input("stop", entity.Real, optional=True, expand=True)
         self._add_input("num", entity.Integer, expand=True)
-        self._add_output("value", entity.Array[entity.Float], expand=True)
+        self._add_output("value", entity.Array[entity.Float], expand=True, expression="Array[Float]")
 
         self.set_default_value("start", 0, entity.Float)
         self.set_default_value("stop", 1, entity.Float)
-        self.set_io_mapping("value", "Array[Float]")
         
     def _execute(self, input_tokens):
         start = input_tokens["start"]["value"]
@@ -302,8 +297,7 @@ class RepeatNode(BuiltinNode):
         super(RepeatNode, self).__init__()
         self._add_input("a", entity.Array, expand=True)
         self._add_input("repeats", entity.Integer, expand=True)
-        self._add_output("value", entity.Array, expand=True)
-        self.set_io_mapping("value", "a")
+        self._add_output("value", entity.Array, expand=True, expression="a")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -320,8 +314,7 @@ class TileNode(BuiltinNode):
         super(TileNode, self).__init__()
         self._add_input("a", entity.Array, expand=True)
         self._add_input("reps", entity.Integer, expand=True)
-        self._add_output("value", entity.Array, expand=True)
-        self.set_io_mapping("value", "a")
+        self._add_output("value", entity.Array, expand=True, expression="a")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -337,8 +330,7 @@ class SliceNode(BuiltinNode):
     def __init__(self):
         super(SliceNode, self).__init__()
         self._add_input("a", entity.Array, expand=True)
-        self._add_output("value", entity.Array, expand=True)
-        self.set_io_mapping("value", "a")
+        self._add_output("value", entity.Array, expand=True, expression="a")
 
         self._add_input("start", entity.Integer, optional=True, expand=True)
         self._add_input("stop", entity.Integer, optional=True, expand=True)
@@ -361,8 +353,7 @@ class SumNode(BuiltinNode):
     def __init__(self):
         super(SumNode, self).__init__()
         self._add_input("a", entity.Array[entity.Real], expand=True)
-        self._add_output("value", entity.Real, expand=True)
-        self.set_io_mapping("value", "first_arg(a)")
+        self._add_output("value", entity.Real, expand=True, expression="first_arg(a)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -377,8 +368,7 @@ class LengthNode(BuiltinNode):
     def __init__(self):
         super(LengthNode, self).__init__()
         self._add_input("a", entity.Array, expand=True)
-        self._add_output("value", entity.Integer, expand=True)
-        self.set_io_mapping("value", "Integer")
+        self._add_output("value", entity.Integer, expand=True, expression="Integer")  # why an expression is needed here?
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -394,8 +384,7 @@ class AddNode(BuiltinNode):
         super(AddNode, self).__init__()
         self._add_input("a", entity.Array[entity.Real] | entity.Real, expand=True)
         self._add_input("b", entity.Array[entity.Real] | entity.Real, expand=True)
-        self._add_output("value", entity.Array[entity.Real] | entity.Real, expand=True)
-        self.set_io_mapping("value", "upper(a, b)")
+        self._add_output("value", entity.Array[entity.Real] | entity.Real, expand=True, expression="upper(a, b)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -413,8 +402,7 @@ class SubNode(BuiltinNode):
         super(SubNode, self).__init__()
         self._add_input("a", entity.Array | entity.Real, expand=True)
         self._add_input("b", entity.Array | entity.Real, expand=True)
-        self._add_output("value", entity.Array | entity.Real, expand=True)
-        self.set_io_mapping("value", "upper(a, b)")
+        self._add_output("value", entity.Array | entity.Real, expand=True, expression="upper(a, b)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -507,8 +495,7 @@ class InspectNode(BuiltinNode):
     def __init__(self):
         super(InspectNode, self).__init__()
         self._add_input("in1", entity.Object)
-        self._add_output("out1", entity.Object)
-        self.set_io_mapping("out1", "in1")
+        self._add_output("out1", entity.Object, expression="in1")
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
@@ -527,10 +514,9 @@ class DispenseLiquid96WellsNode(BuiltinNode):
         super(DispenseLiquid96WellsNode, self).__init__()
 
         self._add_input("in1", entity.Plate96, expand=True)
-        self._add_output("out1", entity.Plate96, expand=True)
+        self._add_output("out1", entity.Plate96, expand=True, expression="in1")
         self._add_input("channel", entity.Integer | entity.LiquidClass, optional=True, expand=True)
         self._add_input("volume", entity.Array[entity.Real], expand=True)
-        self.set_io_mapping("out1", "in1")
 
         self.set_default_value("channel", 0, entity.Integer)
 
@@ -559,10 +545,8 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
         super(ReadAbsorbance3ColorsNode, self).__init__()
 
         self._add_input("in1", entity.Plate96, expand=True)
-        self._add_output("out1", entity.Plate96, expand=True)
+        self._add_output("out1", entity.Plate96, expand=True, expression="in1")
         self._add_output("value", entity.Group[entity.Array[entity.Float]], expand=True)
-
-        self.set_io_mapping("out1", "in1")
     
     def _execute(self, input_tokens):
         params = {}
@@ -583,10 +567,8 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
 #         traits = entity.Object  # ANY?
 #         self._add_input("in1", traits)
 #         self._add_input("cond1", entity.Data)
-#         self._add_output("out1", traits)
-#         self._add_output("out2", traits)
-#         self._set_io_mapping("out1", "in1")
-#         self._set_io_mapping("out2", "in1")
+#         self._add_output("out1", traits, expression="in1")
+#         self._add_output("out2", traits, expression="in1")
     
 #     def _execute(self, input_tokens):
 #         dst = "out1" if input_tokens["cond1"]["value"] else "out2"

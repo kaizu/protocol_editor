@@ -193,7 +193,7 @@ def trait_node_base(cls):
             self.__port_traits[name] = (traits, optional)
             self._set_port_tooltip(self.get_input(name), f" [{traits_str(traits)}]")
 
-        def _add_output(self, name, traits, *, expand=False):
+        def _add_output(self, name, traits, *, expand=False, expression=None):
             if expand:
                 traits = traits | wrap_traits(traits)
                 self.__expandables.append(name)
@@ -206,8 +206,24 @@ def trait_node_base(cls):
                 assert False, 'Never reach here {}'.format(traits)
 
             self.__port_traits[name] = (traits, False)
+            if expression is not None:
+                self.__io_mapping[name] = expression
             self._set_port_tooltip(self.get_output(name), f" [{traits_str(traits)}]")
-        
+
+        # def set_io_mapping(self, output_port_name, expression):
+        #     assert output_port_name in self.outputs(), output_port_name
+        #     # assert input_port_name in self.inputs(), input_port_name
+        #     # input_traits = super(OFPNode, self).get_port_traits(input_port_name)
+        #     # if not entity.is_acceptable(input_traits, entity.Data):
+        #     #     assert (
+        #     #         output_port_name in self.__io_mapping
+        #     #         or sum(1 for name in self.__io_mapping.values() if name == input_port_name) == 0
+        #     #     ), "{} {} {}".format(output_port_name, input_port_name, input_traits)
+        #     self._set_io_mapping(output_port_name, expression)
+
+        # def _set_io_mapping(self, output_port_name, expression):
+        #     self.__io_mapping[output_port_name] = expression
+
         def delete_input(self, name):
             if name in self.__port_traits:
                 del self.__port_traits[name]
@@ -225,20 +241,6 @@ def trait_node_base(cls):
             if name in self.__expandables:
                 self.__expandables.remove(name)
             super(_TraitNodeBase, self).delete_output(name)
-
-        def set_io_mapping(self, output_port_name, expression):
-            assert output_port_name in self.outputs(), output_port_name
-            # assert input_port_name in self.inputs(), input_port_name
-            # input_traits = super(OFPNode, self).get_port_traits(input_port_name)
-            # if not entity.is_acceptable(input_traits, entity.Data):
-            #     assert (
-            #         output_port_name in self.__io_mapping
-            #         or sum(1 for name in self.__io_mapping.values() if name == input_port_name) == 0
-            #     ), "{} {} {}".format(output_port_name, input_port_name, input_traits)
-            self._set_io_mapping(output_port_name, expression)
-
-        def _set_io_mapping(self, output_port_name, expression):
-            self.__io_mapping[output_port_name] = expression
         
         def has_io_mapping(self, name):
             return name in self.__io_mapping

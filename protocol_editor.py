@@ -246,16 +246,7 @@ def declare_node(name, doc):
             self._add_input(port_name, traits)
         for port_name, traits_str in doc.get('output', {}).items():
             traits, is_static = evaluate_traits(traits_str, input_traits)
-            self._add_output(port_name, traits)
-            if not is_static:
-                self.set_io_mapping(port_name, traits_str)
-            # if traits_str in input_traits:
-            #     traits = input_traits[traits_str]
-            #     self._add_output(port_name, traits)
-            #     self.set_io_mapping(port_name, traits_str)
-            # else:
-            #     traits = evaluate_traits(traits_str)
-            #     self._add_output(port_name, traits)
+            self._add_output(port_name, traits, expression=None if is_static else traits_str)
         for prop_name, value in doc.get('property', {}).items():
             assert not self.has_property(prop_name)
             self.create_property(prop_name, str(value), widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
