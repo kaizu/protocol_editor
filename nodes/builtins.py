@@ -417,7 +417,25 @@ class SubNode(BuiltinNode):
         a = input_tokens["a"]["value"]
         b = input_tokens["b"]["value"]
         traits = entity.upper(input_tokens["a"]["traits"], input_tokens["b"]["traits"])
-        return {"value": {"value": a + b, "traits": traits}}
+        return {"value": {"value": a - b, "traits": traits}}
+
+class MulNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Mul"
+
+    def __init__(self):
+        super(MulNode, self).__init__()
+        self._add_input("a", entity.Array | entity.Real, expand=True)
+        self._add_input("b", entity.Array | entity.Real, expand=True)
+        self._add_output("value", entity.Array | entity.Real, expand=True, expression="upper(a, b)")
+    
+    def _execute(self, input_tokens):
+        a = input_tokens["a"]["value"]
+        b = input_tokens["b"]["value"]
+        traits = entity.upper(input_tokens["a"]["traits"], input_tokens["b"]["traits"])
+        return {"value": {"value": a * b, "traits": traits}}
 
 class DisplayNode(BuiltinNode):
 
