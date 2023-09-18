@@ -67,7 +67,7 @@ def reset_session(graph):
             node.set_node_status(NodeStatusEnum.READY)
 
 def verify_session(graph):
-    logger.info("verify_session")
+    logger.debug("verify_session")
 
     is_valid_graph = True
 
@@ -370,11 +370,14 @@ if __name__ == '__main__':
         ForEachNode,
     ])
 
-    graph.register_nodes([
-        nodecls
-        for _, nodecls in inspect.getmembers(nodes.builtins, inspect.isclass)
-        if issubclass(nodecls, nodes.builtins.BuiltinNode) and nodecls is not nodes.builtins.BuiltinNode
-    ])
+    import nodes.manipulate
+
+    for module in (nodes.builtins, nodes.manipulate):
+        graph.register_nodes([
+            nodecls
+            for _, nodecls in inspect.getmembers(module, inspect.isclass)
+            if issubclass(nodecls, nodes.builtins.BuiltinNode) and nodecls is not nodes.builtins.BuiltinNode
+        ])
 
     # show the node graph widget.
     graph_widget = graph.widget

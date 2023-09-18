@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
 
+logger = getLogger(__name__)
+
 import uuid
 import itertools
 from collections import deque
@@ -15,8 +17,6 @@ from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 import NodeGraphQt.errors
 
 from nodes import entity
-
-logger = getLogger(__name__)
 
 
 def draw_square_port(painter, rect, info):
@@ -431,7 +431,7 @@ def ofp_node_base(cls):
             return NodeStatusEnum(self.get_property('status'))
         
         def set_node_status(self, newstatus):
-            logger.info(f"set_node_status {repr(newstatus)}")
+            logger.debug(f"set_node_status {repr(newstatus)}")
             self.set_property('status', newstatus.value, push_undo=False)
         
         def run(self, input_tokens):

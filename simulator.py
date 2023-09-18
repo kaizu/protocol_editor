@@ -16,11 +16,10 @@ class Simulator:
         self.__tokens = {}
 
     def fetch_token(self, node: OFPNode, graph_id: int) -> None:
-        logger.info('fetch_token %s', node)
-
         # This token_store doesn't support multiple tokens at a single port
         assert len(node.output_queue) <= 1
         while len(node.output_queue) > 0:
+            logger.info('fetch_token %s', node)
             output_tokens = node.output_queue.popleft()
             output_tokens = {(graph_id, node.name(), key): value for key, value in output_tokens.items()}
             for key, value in output_tokens.items():
@@ -28,13 +27,12 @@ class Simulator:
                 self.__tokens[key] = value
 
     def transmit_token(self, node: OFPNode, graph_id: int) -> None:
-        logger.info('transmit_token %s', node)
-
         # Transmit a token
         for output in node.output_ports():
             key = (graph_id, node.name(), output.name())
             if not key in self.__tokens:
                 continue
+            logger.info('transmit_token %s', node)
             value = self.__tokens[key]
             send = False
             for connected in output.connected_ports():
