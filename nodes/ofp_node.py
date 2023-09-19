@@ -65,20 +65,16 @@ def traits_str(traits):
     return text
 
 def wrap_traits_if(original_type, entity_types):
-    if any(entity.is_acceptable(entity_type, entity._Spread) for entity_type in entity_types):
+    if any(entity.is_acceptable(entity_type, entity.Spread) for entity_type in entity_types):
         return wrap_traits(original_type)
     return original_type
 
 def wrap_traits(entity_type):
-    if entity.is_acceptable(entity_type, entity.Object):
-        return entity.ObjectGroup[entity_type]
-    elif entity.is_acceptable(entity_type, entity.Data):
-        return entity.Group[entity_type]
-    else:
-        assert False, f"Never reach here [{entity_type}]"
+    assert entity.is_acceptable(entity_type, entity.Any), str(entity_type)
+    return entity.Spread[entity_type]
 
 def unwrap_traits(entity_type):
-    if entity.is_acceptable(entity_type, entity._Spread):
+    if entity.is_acceptable(entity_type, entity.Spread):
         return entity_type.__args__[0]
     return entity_type
 
@@ -106,9 +102,9 @@ def expand_input_tokens(input_tokens, defaults=None):
     input_tokens = dict(defaults, **input_tokens)
     group_input_tokens = {
         name: token for (name, token) in input_tokens.items()
-        if entity.is_acceptable(token["traits"], entity._Spread)
+        if entity.is_acceptable(token["traits"], entity.Spread)
     }
-    assert all(token["traits"] not in (entity.Group, entity.ObjectGroup) for token in input_tokens.values()), f"Group cannot be bare [{input_tokens}]"
+    assert all(token["traits"] != entity.Spread for token in input_tokens.values()), f"Group cannot be bare [{input_tokens}]"
 
     if len(group_input_tokens) == 0:
         yield input_tokens
@@ -347,7 +343,7 @@ def trait_node_base(cls):
         def execute(self, input_tokens):
             input_tokens = dict(self.__default_value, **input_tokens)
 
-            if not any(entity.is_acceptable(input_tokens[name]["traits"], entity._Spread) for name in self.expandable_ports if name in input_tokens):
+            if not any(entity.is_acceptable(input_tokens[name]["traits"], entity.Spread) for name in self.expandable_ports if name in input_tokens):
                 # no expansion
                 return self._execute(input_tokens)
             else:
@@ -359,7 +355,7 @@ def trait_node_base(cls):
                 loop_items = [
                     name
                     for name, token in input_tokens.items()
-                    if entity.is_acceptable(token["traits"], entity.Object) and not entity.is_acceptable(token["traits"], entity._Spread)
+                    if entity.is_acceptable(token["traits"], entity.Object) and not entity.is_acceptable(token["traits"], entity.Spread)
                 ]
                 # assert all(name in self.__io_mapping and self.__io_mapping[name] in input_tokens for name in loop_items)
                 results = []

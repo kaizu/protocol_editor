@@ -114,10 +114,10 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
 
         self.add_input_w_traits("in1", entity.Plate96, expand=True)
         self.add_output_w_traits("out1", entity.Plate96, expand=True, expression="in1")
-        self.add_output_w_traits("value", entity.Group[entity.Array[entity.Float]], expand=True, expression="Group[Array[Float]]")
+        self.add_output_w_traits("value", entity.Spread[entity.Array[entity.Float]], expand=True, expression="Spread[Array[Float]]")
     
     def _execute(self, input_tokens):
         # logger.info(f"ReadAbsorbance3ColorsNode execute")
         # (data, ), opts = fluent.experiments.read_absorbance_3colors(**params)
         data = experiments.read_absorbance_3colors(input_tokens["in1"])
-        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Group[entity.Array[entity.Float]]}}
+        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Spread[entity.Array[entity.Float]]}}

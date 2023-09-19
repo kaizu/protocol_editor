@@ -68,7 +68,7 @@ class GroupNode(BuiltinNode):
         self.set_port_deletion_allowed(True)
 
         self.add_input_w_traits("in1", entity.Data)
-        self.add_output_w_traits("value", entity.Group[entity.Data], expression="Group[in1]")
+        self.add_output_w_traits("value", entity.Spread[entity.Data], expression="Spread[in1]")
 
     def check(self):
         logger.debug("GroupNode: check")
@@ -88,7 +88,7 @@ class GroupNode(BuiltinNode):
         ninputs = int(self.get_property("ninputs"))
         value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
         traits = input_tokens["in1"]["traits"]  # The first element
-        return {"value": {"value": value, "traits": entity.Group[traits]}}
+        return {"value": {"value": value, "traits": entity.Spread[traits]}}
     
     def on_value_changed(self, *args, **kwargs):
         n = int(args[0])
@@ -113,7 +113,7 @@ class AsArrayNode(BuiltinNode):
     def __init__(self):
         super(AsArrayNode, self).__init__()
 
-        self.add_input_w_traits("in1", entity.Group[entity.Data], expand=True)
+        self.add_input_w_traits("in1", entity.Spread[entity.Data], expand=True)
         self.add_output_w_traits("out1", entity.Array[entity.Data], expand=True, expression="first_arg(in1)")
 
     def _execute(self, input_tokens):
@@ -139,7 +139,7 @@ class ObjectGroupNode(BuiltinNode):
         self.set_port_deletion_allowed(True)
 
         self.add_input_w_traits("in1", entity.Object)
-        self.add_output_w_traits("value", entity.ObjectGroup[entity.Object], expression="ObjectGroup[in1]")
+        self.add_output_w_traits("value", entity.Spread[entity.Object], expression="Spread[in1]")
 
     def check(self):
         if not super(ObjectGroupNode, self).check():
@@ -158,7 +158,7 @@ class ObjectGroupNode(BuiltinNode):
         ninputs = int(self.get_property("ninputs"))
         value = [input_tokens[f"in{i+1}"]["value"] for i in range(ninputs)]
         traits = input_tokens["in1"]["traits"]  # The first element
-        return {"value": {"value": value, "traits": entity.ObjectGroup[traits]}}
+        return {"value": {"value": value, "traits": entity.Spread[traits]}}
     
     def on_value_changed(self, *args, **kwargs):
         n = int(args[0])

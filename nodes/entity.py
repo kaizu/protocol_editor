@@ -47,6 +47,12 @@ def _is_acceptable(one, another):
         return all(_is_acceptable(x, another) for x in one.__args__)
     elif isinstance(one, typing._GenericAlias):
         assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity), f"{one}"
+
+        #XXX:
+        if issubclass(one.__origin__, Spread) and another in (Object, Data):
+            assert len(one.__args__) == 1
+            return _is_acceptable(one.__args__[0], another)
+
         return issubclass(one.__origin__, another)
     else:
         assert False, f"Never reach here [{type(one)}]"
@@ -73,17 +79,13 @@ def is_acceptable(one, another):
 
 class Any(Entity): pass
 
-class Object(Any): pass
+class Object(Entity): pass
 
-class Data(Any): pass
+class Data(Entity): pass
 
-# _Spread
+class Spread(Entity, typing.Generic[typing.TypeVar("T")]): pass
 
-class _Spread(Entity): pass
-
-class Group(Data, _Spread, typing.Generic[typing.TypeVar("T")]): pass
-
-class ObjectGroup(Object, _Spread, typing.Generic[typing.TypeVar("T")]): pass
+Any = Object | Data
 
 # Scalar
 
@@ -129,20 +131,20 @@ def is_union(x):
     return isinstance(x, types.UnionType) or isinstance(x, typing._UnionGenericAlias)
 
 def is_group(x):
-    return isinstance(x, typing._GenericAlias) and x.__origin__ == Group
+    return isinstance(x, typing._GenericAlias) and x.__origin__ == Spread
 
 def is_array(x):
     return isinstance(x, typing._GenericAlias) and x.__origin__ == Array
 
 #TODO: Only numbers are supported.
-_POSSIBLE_TRAITS = (Integer, Float, Array[Integer], Array[Float], Group[Integer], Group[Float], Group[Array[Integer]], Group[Array[Float]])
+_POSSIBLE_TRAITS = (Integer, Float, Array[Integer], Array[Float], Spread[Integer], Spread[Float], Spread[Array[Integer]], Spread[Array[Float]])
 
 def primitive_upper(x, y):
     assert x in _POSSIBLE_TRAITS, x
     assert y in _POSSIBLE_TRAITS, y
 
     if is_group(x) or is_group(y):
-        return Group[primitive_upper(x.__args__[0] if is_group(x) else x, y.__args__[0] if is_group(y) else y)]
+        return Spread[primitive_upper(x.__args__[0] if is_group(x) else x, y.__args__[0] if is_group(y) else y)]
     elif is_array(x) or is_array(y):
         return Array[primitive_upper(x.__args__[0] if is_array(x) else x, y.__args__[0] if is_array(y) else y)]
     elif x == Float or y == Float:
@@ -180,24 +182,24 @@ def get_categories():
     }
 
 if __name__ == "__main__":
-    print(is_acceptable(Array, Any))
-    print(is_acceptable(Array, Data))
-    print(is_acceptable(Array, Object))
-    print(is_acceptable(Array, ArrayLike))
-    print(is_acceptable(ArrayLike, Array))
+    assert is_acceptable(Array, Any)
+    assert is_acceptable(Array, Data)
+    assert not is_acceptable(Array, Object)
+    assert is_acceptable(Array, ArrayLike)
+    assert not is_acceptable(ArrayLike, Array)
 
-    print(is_acceptable(Group[Array], Group))
-    print(is_acceptable(Group[Array], Group[Array]))
-    print(is_acceptable(Group[Array], Group[ArrayLike]))
-    print(is_acceptable(Group[Array], Group[Array]))
-    print(is_acceptable(Group, Group))
+    assert is_acceptable(Spread, Spread)
+    assert is_acceptable(Spread[Array], Spread)
+    assert is_acceptable(Spread[Array], Spread[Array])
+    assert is_acceptable(Spread[Array], Spread[ArrayLike])
+    assert is_acceptable(Spread[Array], Spread[Array])
+    assert is_acceptable(Spread[Array], Data)
+    assert is_acceptable(Spread[Plate96], Spread)
+    assert is_acceptable(Spread[Plate96], Object)
 
-    print(is_acceptable(ObjectGroup[Plate96], _Spread))
-    print(is_acceptable(ObjectGroup[Plate96], Object))
-
-    print(Group == Group)
-    print(Group[Float] == Group)
-    print(Group[Float] in (Group, ))
+    assert Spread == Spread
+    assert Spread[Float] != Spread
+    assert Spread[Float] not in (Spread, )
 
     # print(Array96, is_category(Array96))
     # print(ArrayLike, is_category(ArrayLike))
