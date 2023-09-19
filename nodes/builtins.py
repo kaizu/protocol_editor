@@ -123,14 +123,14 @@ class AsArrayNode(BuiltinNode):
         traits = entity.Array[entity.first_arg(input_tokens["in1"]["traits"])]
         return {"out1": {"value": numpy.asarray(input_tokens["in1"]["value"]), "traits": traits}}
 
-class ObjectGroupNode(BuiltinNode):
+class GroupObjectNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "ObjectGroup"
+    NODE_NAME = "GroupObject"
 
     def __init__(self):
-        super(ObjectGroupNode, self).__init__()
+        super(GroupObjectNode, self).__init__()
 
         widget = DoubleSpinBoxWidget(self.view, name="ninputs", minimum=1, maximum=10)
         widget.get_custom_widget().valueChanged.connect(self.on_value_changed)
@@ -142,7 +142,7 @@ class ObjectGroupNode(BuiltinNode):
         self.add_output_w_traits("value", entity.Spread[entity.Object], expression="Spread[in1]")
 
     def check(self):
-        if not super(ObjectGroupNode, self).check():
+        if not super(GroupObjectNode, self).check():
             return False
         
         traits = self.get_input_port_traits('in1')
