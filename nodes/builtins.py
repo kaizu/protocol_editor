@@ -104,6 +104,25 @@ class GroupNode(BuiltinNode):
                     port.disconnect_from(another)
                 self.delete_input(name)
 
+class AsArrayNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "AsArray"
+
+    def __init__(self):
+        super(AsArrayNode, self).__init__()
+
+        self.add_input_w_traits("in1", entity.Group[entity.Data], expand=True)
+        self.add_output_w_traits("out1", entity.Array[entity.Data], expand=True, expression="first_arg(in1)")
+
+    def _execute(self, input_tokens):
+        # print(input_tokens["in1"]["traits"])
+        # print(entity.first_arg(input_tokens["in1"]["traits"]))
+        # print(entity.Array[entity.first_arg(input_tokens["in1"]["traits"])])
+        traits = entity.Array[entity.first_arg(input_tokens["in1"]["traits"])]
+        return {"out1": {"value": numpy.asarray(input_tokens["in1"]["value"]), "traits": traits}}
+
 class ObjectGroupNode(BuiltinNode):
 
     __identifier__ = "builtins"

@@ -114,7 +114,7 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
 
         self.add_input_w_traits("in1", entity.Plate96, expand=True)
         self.add_output_w_traits("out1", entity.Plate96, expand=True, expression="in1")
-        self.add_output_w_traits("value", entity.Group[entity.Array[entity.Float]], expand=True)
+        self.add_output_w_traits("value", entity.Group[entity.Array[entity.Float]], expand=True, expression="Group[Array[Float]]")
     
     def _execute(self, input_tokens):
         # logger.info(f"ReadAbsorbance3ColorsNode execute")

@@ -91,7 +91,7 @@ def evaluate_traits(expression, inputs=None):
     locals.update({"upper": entity.upper, "first_arg": entity.first_arg})
     code = compile(expression, "<string>", "eval")
     is_static = all(name in params for name in code.co_names)
-    assert all(name in locals for name in code.co_names)
+    assert all(name in locals for name in code.co_names), f"{code.co_names} {locals}"
     return eval(expression, {"__builtins__": {}}, locals), is_static
 
 class NodeStatusEnum(IntEnum):
@@ -215,7 +215,7 @@ def trait_node_base(cls):
                 multi_input = False
                 painter_func = painter_func or draw_square_port
             elif entity.is_acceptable(traits, entity.Data):
-                multi_input = True
+                multi_input = False
                 color = color or (180, 80, 0)
             return super(_TraitNodeBase, self).add_input(name, multi_input, display_name, color, locked, painter_func)
 
@@ -286,6 +286,7 @@ def trait_node_base(cls):
         def add_output_w_traits(self, name, traits, *, expand=False, expression=None):
             if expand:
                 traits = traits | wrap_traits(traits)
+                expression = expression or traits_str(traits)
 
             assert entity.is_acceptable(traits, entity.Data) or entity.is_acceptable(traits, entity.Object)
 
@@ -306,54 +307,31 @@ def trait_node_base(cls):
             #     is_valid = is_valid and station != ""
 
             for port in self.input_ports():
-                port_traits = self.get_input_port_traits(port.name())
+                port_traits_def = self.get_port_traits_def(port.name())
                 connected_ports = port.connected_ports()
 
-                if len(connected_ports) == 0 and not self.is_optional_port(port.name()):
-                    is_valid = False
-                    error_msg = f"Port [{port.name()}] is disconnected"
-                    break
-
-                for another_port in connected_ports:
-                    another = another_port.node()
-
-                    if isinstance(another, PortInputNode):
-                        parent_port = another.parent_port
-                        another_traits = parent_port.node().get_input_port_traits(parent_port.name())
-                    else:
-                        # assert isinstance(another, (OFPNode, OFPGroupNode))
-                        another_traits = another.get_output_port_traits(another_port.name())
-                    
-                    if not entity.is_acceptable(another_traits, port_traits):
-                        logger.info("%s %s %s; %s %s %s", self.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
+                if len(connected_ports) == 0:
+                    if not self.is_optional_port(port.name()):
                         is_valid = False
-                        error_msg = f"Port [{port.name()}] traits mismatches. [{traits_str(port_traits)}] expected. [{traits_str(another_traits)}] given"
+                        error_msg = f"Port [{port.name()}] is disconnected"
+                        break
+                else:
+                    assert len(connected_ports) == 1
+                    port_traits = self.get_input_port_traits(port.name())
+                    if not entity.is_acceptable(port_traits, port_traits_def):
+                        is_valid = False
+                        error_msg = f"Port [{port.name()}] traits mismatches. [{traits_str(port_traits_def)}] expected. [{traits_str(port_traits)}] given"
+                        logger.info(error_msg)
                         break
 
             for port in self.output_ports():
-                port_traits = self.get_output_port_traits(port.name())
+                port_traits_def = self.get_port_traits_def(port.name())
 
                 connected_ports = port.connected_ports()
-                if len(connected_ports) == 0 and not entity.is_acceptable(port_traits, entity.Data):
+                if len(connected_ports) == 0 and not entity.is_acceptable(port_traits_def, entity.Data):
                     is_valid = False
                     error_msg = f"Port [{port.name()}] is disconnected"
                     break
-
-                # for another_port in connected_ports:
-                #     another = another_port.node()
-
-                #     if isinstance(another, PortOutputNode):
-                #         parent_port = another.parent_port
-                #         another_traits = parent_port.node().get_output_port_traits(parent_port.name())
-                #     else:
-                #         # assert isinstance(another, (OFPNode, OFPGroupNode))
-                #         another_traits = another.get_inport_traits(another_port.name())
-                    
-                #     if not entity.is_acceptable(port_traits, another_traits):
-                #         logger.info("%s %s %s; %s %s %s", self.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
-                #         is_valid = False
-                #         error_msg = f"Port [{port.name()}] traits mismatches. [{traits_str(port_traits)}] expected. [{traits_str(another_traits)}] given"
-                #         break
 
             if not is_valid:
                 self.set_node_status(NodeStatusEnum.ERROR)
