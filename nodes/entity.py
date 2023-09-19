@@ -130,7 +130,7 @@ def first_arg(x):
 def is_union(x):
     return isinstance(x, types.UnionType) or isinstance(x, typing._UnionGenericAlias)
 
-def is_group(x):
+def is_spread(x):
     return isinstance(x, typing._GenericAlias) and x.__origin__ == Spread
 
 def is_array(x):
@@ -143,8 +143,8 @@ def primitive_upper(x, y):
     assert x in _POSSIBLE_TRAITS, x
     assert y in _POSSIBLE_TRAITS, y
 
-    if is_group(x) or is_group(y):
-        return Spread[primitive_upper(x.__args__[0] if is_group(x) else x, y.__args__[0] if is_group(y) else y)]
+    if is_spread(x) or is_spread(y):
+        return Spread[primitive_upper(x.__args__[0] if is_spread(x) else x, y.__args__[0] if is_spread(y) else y)]
     elif is_array(x) or is_array(y):
         return Array[primitive_upper(x.__args__[0] if is_array(x) else x, y.__args__[0] if is_array(y) else y)]
     elif x == Float or y == Float:

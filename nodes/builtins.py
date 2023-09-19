@@ -498,7 +498,8 @@ class ScatterNode(BuiltinNode):
         canvas = FigureCanvas(fig)
         ax = fig.add_subplot(111)
 
-        for _input_tokens in expand_input_tokens(input_tokens, self.default_value):
+        expandables = self.list_expandables({name: token["traits"] for name, token in input_tokens.items()})
+        for _input_tokens in expand_input_tokens(input_tokens, expandables):
             x = _input_tokens["x"]["value"]
             y = _input_tokens["y"]["value"]
             ax.plot(x, y, '.')

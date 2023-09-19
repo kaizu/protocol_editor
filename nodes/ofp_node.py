@@ -64,20 +64,6 @@ def traits_str(traits):
     text = text.replace('typing.', '').replace('nodes.entity.', '')
     return text
 
-def wrap_traits_if(original_type, entity_types):
-    if any(entity.is_acceptable(entity_type, entity.Spread) for entity_type in entity_types):
-        return wrap_traits(original_type)
-    return original_type
-
-def wrap_traits(entity_type):
-    assert entity.is_acceptable(entity_type, entity.Any), str(entity_type)
-    return entity.Spread[entity_type]
-
-def unwrap_traits(entity_type):
-    if entity.is_acceptable(entity_type, entity.Spread):
-        return entity_type.__args__[0]
-    return entity_type
-
 def evaluate_traits(expression, inputs=None):
     inputs = inputs or {}
     params = entity.get_categories()
@@ -97,25 +83,18 @@ class NodeStatusEnum(IntEnum):
     RUNNING = auto()
     DONE = auto()
 
-def expand_input_tokens(input_tokens, defaults=None):
-    defaults = defaults or {}
-    input_tokens = dict(defaults, **input_tokens)
-    group_input_tokens = {
-        name: token for (name, token) in input_tokens.items()
-        if entity.is_acceptable(token["traits"], entity.Spread)
-    }
-    assert all(token["traits"] != entity.Spread for token in input_tokens.values()), f"Group cannot be bare [{input_tokens}]"
-
-    if len(group_input_tokens) == 0:
+def expand_input_tokens(input_tokens, expandables):
+    if len(expandables) == 0:
         yield input_tokens
     else:
-        max_length = max(len(token["value"]) for token in group_input_tokens.values())
-        # assert all(not entity.is_acceptable(token["traits"], entity.Object) for (name, token) in input_tokens.items() if name not in group_input_tokens), f"Object is not copyable [{input_tokens}]"
+        assert all(token["traits"] != entity.Spread for token in input_tokens.values()), f"Group cannot be bare [{input_tokens}]"
+        max_length = max(len(input_tokens[name]["value"]) for name in expandables)
+        # assert all(not entity.is_acceptable(token["traits"], entity.Object) for (name, token) in input_tokens.items() if name not in expandables), f"Object is not copyable [{input_tokens}]"
         for i in range(max_length):
             yield {
                 name: (
                     dict(value=token["value"][i], traits=token["traits"].__args__[0])
-                    if name in group_input_tokens
+                    if name in expandables
                     else dict(value=token["value"], traits=token["traits"])
                 )
                 for (name, token) in input_tokens.items()
@@ -166,12 +145,21 @@ def trait_node_base(cls):
         def get_output_port_traits(self, name):
             #XXX: This impl would be too slow. Use cache
             if name in self.__io_mapping:
-                expression = self.__io_mapping[name]
                 input_traits = {input.name(): self.get_input_port_traits(input.name()) for input in self.input_ports()}
+                expandables = self.list_expandables(input_traits)
+
+                _input_traits = {
+                    name: traits if name not in expandables else entity.first_arg(traits)
+                    for name, traits in input_traits.items()
+                }
+                expression = self.__io_mapping[name]
                 # print(f"{expression}: {input_traits}: {name}")
-                _input_traits = {name: unwrap_traits(traits) if self.is_expandable_port(name) else traits for name, traits in input_traits.items()}
-                port_traits = evaluate_traits(expression, _input_traits)[0]
-                return wrap_traits_if(port_traits, (input_traits[name] for name in self.expandable_ports if name in input_traits))
+                port_traits, _ = evaluate_traits(expression, _input_traits)
+
+                if len(expandables) == 0:
+                    return port_traits
+                else:
+                    return entity.Spread[port_traits]
             return self.get_port_traits_def(name)
 
         def set_port_traits(self, port, port_traits):
@@ -269,7 +257,7 @@ def trait_node_base(cls):
 
         def add_input_w_traits(self, name, traits, *, optional=False, expand=False):
             if expand:
-                traits = traits | wrap_traits(traits)
+                traits = traits | entity.Spread[traits]
 
             assert not optional or entity.is_acceptable(traits, entity.Data)
             assert entity.is_acceptable(traits, entity.Data) or entity.is_acceptable(traits, entity.Object)
@@ -281,7 +269,7 @@ def trait_node_base(cls):
 
         def add_output_w_traits(self, name, traits, *, expand=False, expression=None):
             if expand:
-                traits = traits | wrap_traits(traits)
+                traits = traits | entity.Spread[traits]
                 expression = expression or traits_str(traits)
 
             assert entity.is_acceptable(traits, entity.Data) or entity.is_acceptable(traits, entity.Object)
@@ -340,42 +328,51 @@ def trait_node_base(cls):
         def _execute(self, input_tokens):  #XXX: rename this
             raise NotImplementedError()
         
+        def list_expandables(self, input_traits):
+            expandables = []
+            for name, traits in input_traits.items():
+                if not entity.is_spread(traits):
+                    continue
+                elif not self.is_expandable_port(name):
+                    continue
+                traits_def = self.get_port_traits_def(name)
+                assert len(traits.__args__) == 1, traits
+                if entity.is_acceptable(traits.__args__[0], traits_def):
+                    expandables.append(name)
+            return tuple(expandables)
+
         def execute(self, input_tokens):
             input_tokens = dict(self.__default_value, **input_tokens)
+            expandables = self.list_expandables({name: token["traits"] for name, token in input_tokens.items()})
 
-            if not any(entity.is_acceptable(input_tokens[name]["traits"], entity.Spread) for name in self.expandable_ports if name in input_tokens):
+            if len(expandables) == 0:
                 # no expansion
                 return self._execute(input_tokens)
-            else:
-                # results = [
-                #     self._execute(_input_tokens)
-                #     for _input_tokens in expand_input_tokens(input_tokens)
-                # ]
 
-                loop_items = [
-                    name
-                    for name, token in input_tokens.items()
-                    if entity.is_acceptable(token["traits"], entity.Object) and not entity.is_acceptable(token["traits"], entity.Spread)
-                ]
-                # assert all(name in self.__io_mapping and self.__io_mapping[name] in input_tokens for name in loop_items)
-                results = []
-                # updates = {}
-                for _input_tokens in expand_input_tokens(input_tokens):
-                    # _input_tokens.update(updates)
-                    output_tokens = self._execute(_input_tokens)
-                    results.append(output_tokens)
-                    # updates = {self.__io_mapping[name]: token for name, token in output_tokens.items() if name in loop_items}
+            loop_items = [name for name, token in input_tokens.items() if name not in expandables and entity.is_acceptable(token["traits"], entity.Object)]
 
-                return {
-                    output_port.name(): {
-                        "value": [result[output_port.name()]["value"] for result in results],
-                        "traits": wrap_traits(results[0][output_port.name()]["traits"])
-                    } if output_port.name() not in loop_items else {
-                        "value": results[-1][output_port.name()]["value"],
-                        "traits": results[0][output_port.name()]["traits"]
+            results = []
+            # updates = {}
+            for _input_tokens in expand_input_tokens(input_tokens, expandables):
+                # _input_tokens.update(updates)
+                _output_tokens = self._execute(_input_tokens)
+                results.append(_output_tokens)
+                # updates = {self.__io_mapping[name]: token for name, token in _output_tokens.items() if name in loop_items}
+                
+            output_tokens = {}
+            for output_port in self.output_ports():
+                name = output_port.name()
+                if name in loop_items:
+                    output_tokens[name] = {
+                        "value": results[-1][name]["value"],
+                        "traits": results[-1][name]["traits"]
                     }
-                    for output_port in self.output_ports()
-                }
+                else:
+                    output_tokens[name] = {
+                        "value": [result[name]["value"] for result in results],
+                        "traits": entity.Spread[results[0][name]["traits"]]
+                    }
+            return output_tokens
 
     return _TraitNodeBase
 
