@@ -43,7 +43,7 @@ def _is_acceptable(one, another):
     if inspect.isclass(one):
         assert issubclass(one, Entity)
         return issubclass(one, another)
-    elif isinstance(one, types.UnionType) or isinstance(one, typing._UnionGenericAlias):
+    elif is_union(one):
         return all(_is_acceptable(x, another) for x in one.__args__)
     elif isinstance(one, typing._GenericAlias):
         assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity), f"{one}"
@@ -62,7 +62,7 @@ def is_acceptable(one, another):
     if inspect.isclass(another):
         assert issubclass(another, Entity)
         return _is_acceptable(one, another)
-    elif isinstance(another, types.UnionType) or isinstance(another, typing._UnionGenericAlias):
+    elif is_union(another):
         # return any(_is_acceptable(one, x) for x in another.__args__)
         return any(is_acceptable(one, x) for x in another.__args__)
     elif isinstance(another, typing._GenericAlias):
