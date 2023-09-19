@@ -24,8 +24,6 @@ class ServeNode(input_node_base(entity.Labware, {"Plate (96-well)": entity.Plate
 
     def _execute(self, input_tokens):
         assert len(input_tokens) == 0, input_tokens
-        traits = self.get_port_traits("value")  # an output port
-        assert entity.is_acceptable(traits, entity.Object), traits
         value = experiments.serve_plate_96wells()
         return {"value": value}
 
@@ -39,7 +37,7 @@ class StoreLabwareNode(BuiltinNode):
         super(StoreLabwareNode, self).__init__()
 
         self.add_text_input("where", "where", '')
-        self._add_input("in1", entity.Labware, expand=True)
+        self.add_input_w_traits("in1", entity.Labware, expand=True)
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
@@ -63,7 +61,7 @@ class StoreArtifactsNode(BuiltinNode):
         super(StoreArtifactsNode, self).__init__()
 
         self.add_text_input("where", "where")
-        self._add_input("in1", entity.Data)
+        self.add_input_w_traits("in1", entity.Data)
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
@@ -82,10 +80,10 @@ class DispenseLiquid96WellsNode(BuiltinNode):
     def __init__(self):
         super(DispenseLiquid96WellsNode, self).__init__()
 
-        self._add_input("in1", entity.Plate96, expand=True)
-        self._add_output("out1", entity.Plate96, expand=True, expression="in1")
-        self._add_input("channel", entity.Integer | entity.LiquidClass, optional=True, expand=True)
-        self._add_input("volume", entity.Array[entity.Real], expand=True)
+        self.add_input_w_traits("in1", entity.Plate96, expand=True)
+        self.add_output_w_traits("out1", entity.Plate96, expand=True, expression="in1")
+        self.add_input_w_traits("channel", entity.Integer | entity.LiquidClass, optional=True, expand=True)
+        self.add_input_w_traits("volume", entity.Array[entity.Real], expand=True)
 
         self.set_default_value("channel", 0, entity.Integer)
 
@@ -114,9 +112,9 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
     def __init__(self):
         super(ReadAbsorbance3ColorsNode, self).__init__()
 
-        self._add_input("in1", entity.Plate96, expand=True)
-        self._add_output("out1", entity.Plate96, expand=True, expression="in1")
-        self._add_output("value", entity.Group[entity.Array[entity.Float]], expand=True)
+        self.add_input_w_traits("in1", entity.Plate96, expand=True)
+        self.add_output_w_traits("out1", entity.Plate96, expand=True, expression="in1")
+        self.add_output_w_traits("value", entity.Group[entity.Array[entity.Float]], expand=True)
     
     def _execute(self, input_tokens):
         # logger.info(f"ReadAbsorbance3ColorsNode execute")

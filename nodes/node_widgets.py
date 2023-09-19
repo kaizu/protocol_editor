@@ -195,7 +195,7 @@ class PushButtonWidget(NodeBaseWidget):
 #         widget = MyNodeLineEdit(self.view, name="mywidget", text="Saluton, \nMondo!")
 #         self.add_custom_widget(widget, tab='widgets')
 #         # self.add_text_input("mywidget", tab="widgets")
-#         self._add_input("in1", PortTraitsEnum.DATA)
+#         self.add_input_w_traits("in1", PortTraitsEnum.DATA)
 
 #     def _execute(self, input_tokens):
 #         value = input_tokens["in1"]

@@ -38,19 +38,16 @@ def input_node_base(base, items):
         def __init__(self):
             super(_InputNodeBase, self).__init__()
 
+            assert all(entity.is_acceptable(traits, self.BASE_ENTITY_TYPE) for traits in self.ENTITY_TYPES.values()), f"{self.BASE_ENTITY_TYPE} {self.ENTITY_TYPES}"
+
             self.add_combo_menu(self.OUTPUT_PORT_NAME, items=sorted(self.ENTITY_TYPES))
-            self._add_output(self.OUTPUT_PORT_NAME, base)
+            self.add_output_w_traits(self.OUTPUT_PORT_NAME, base)
 
         def set_property(self, name, value, push_undo=True):
             # logger.info(f"set_property: {self}, {value} {push_undo}")
-            
             if name == self.OUTPUT_PORT_NAME:
                 traits = self.ENTITY_TYPES.get(value, self.BASE_ENTITY_TYPE)
-                self._set_port_traits(self.OUTPUT_PORT_NAME, traits, self._get_port_traits(self.OUTPUT_PORT_NAME)[1])
-                # print(self.get_port_traits(self.OUTPUT_PORT_NAME))
-
-                self._set_port_tooltip(self.get_output(self.OUTPUT_PORT_NAME), f" [{traits_str(traits)}]")
-
+                self.update_port_traits(self.get_output(self.OUTPUT_PORT_NAME), traits)
             super(_InputNodeBase, self).set_property(name, value, push_undo)
 
     return _InputNodeBase
@@ -70,17 +67,17 @@ class GroupNode(BuiltinNode):
 
         self.set_port_deletion_allowed(True)
 
-        self._add_input("in1", entity.Data)
-        self._add_output("value", entity.Group[entity.Data], expression="Group[in1]")
+        self.add_input_w_traits("in1", entity.Data)
+        self.add_output_w_traits("value", entity.Group[entity.Data], expression="Group[in1]")
 
     def check(self):
-        logger.info("GroupNode: check")
+        logger.debug("GroupNode: check")
         if not super(GroupNode, self).check():
             return False
         
-        traits = self._get_connected_traits(self.get_input('in1'))
+        traits = self.get_input_port_traits('in1')
         for i in range(1, len(self.input_ports())):
-            another_traits = self._get_connected_traits(self.get_input(f'in{i+1}'))
+            another_traits = self.get_input_port_traits(f'in{i+1}')
             if another_traits != traits:
                 self.set_node_status(NodeStatusEnum.ERROR)
                 self.message = f"Port [in{i+1}] has wrong traits [{traits_str(another_traits)}]. [{traits_str(traits)}] expected"
@@ -98,7 +95,7 @@ class GroupNode(BuiltinNode):
         nports = len(self.input_ports())
         if n > nports:
             for i in range(nports, n):
-                self._add_input(f"in{i+1}", entity.Data)
+                self.add_input_w_traits(f"in{i+1}", entity.Data)
         elif n < nports:
             for i in range(nports, n, -1):
                 name = f"in{i}"
@@ -122,16 +119,16 @@ class ObjectGroupNode(BuiltinNode):
 
         self.set_port_deletion_allowed(True)
 
-        self._add_input("in1", entity.Object)
-        self._add_output("value", entity.ObjectGroup[entity.Object], expression="ObjectGroup[in1]")
+        self.add_input_w_traits("in1", entity.Object)
+        self.add_output_w_traits("value", entity.ObjectGroup[entity.Object], expression="ObjectGroup[in1]")
 
     def check(self):
         if not super(ObjectGroupNode, self).check():
             return False
         
-        traits = self._get_connected_traits(self.get_input('in1'))
+        traits = self.get_input_port_traits('in1')
         for i in range(1, len(self.input_ports())):
-            another_traits = self._get_connected_traits(self.get_input(f'in{i+1}'))
+            another_traits = self.get_input_port_traits(f'in{i+1}')
             if another_traits != traits:
                 self.set_node_status(NodeStatusEnum.ERROR)
                 self.message = f"Port [in{i+1}] has wrong traits [{traits_str(another_traits)}]. [{traits_str(traits)}] expected"
@@ -147,9 +144,11 @@ class ObjectGroupNode(BuiltinNode):
     def on_value_changed(self, *args, **kwargs):
         n = int(args[0])
         nports = len(self.input_ports())
-        if n > nports:
+        if n == nports:
+            return
+        elif n > nports:
             for i in range(nports, n):
-                self._add_input(f"in{i+1}", entity.Object)
+                self.add_input_w_traits(f"in{i+1}", entity.Object)
         elif n < nports:
             for i in range(nports, n, -1):
                 name = f"in{i}"
@@ -157,6 +156,7 @@ class ObjectGroupNode(BuiltinNode):
                 for another in port.connected_ports():
                     port.disconnect_from(another)
                 self.delete_input(name)
+        self.check()
 
 class IntegerNode(BuiltinNode):
 
@@ -170,7 +170,7 @@ class IntegerNode(BuiltinNode):
         widget = DoubleSpinBoxWidget(self.view, name="value")
         self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
 
-        self._add_output("value", entity.Integer)
+        self.add_output_w_traits("value", entity.Integer)
         # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
     
     def _execute(self, input_tokens):
@@ -188,7 +188,7 @@ class FloatNode(BuiltinNode):
         widget = DoubleSpinBoxWidget(self.view, name="value", decimals=1)
         self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
 
-        self._add_output("value", entity.Float)
+        self.add_output_w_traits("value", entity.Float)
         # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
     
     def _execute(self, input_tokens):
@@ -205,7 +205,7 @@ class LiquidClassNode(BuiltinNode):  # IONode
 
         items = ['Pure Water', 'Red Water', 'Blue Water']
         self.add_combo_menu("value", items=items)
-        self._add_output("value", entity.LiquidClass)
+        self.add_output_w_traits("value", entity.LiquidClass)
     
     def _execute(self, input_tokens):
         return {"value": {"value": self.get_property("value"), "traits": entity.LiquidClass}}
@@ -218,9 +218,9 @@ class FullNode(BuiltinNode):
 
     def __init__(self):
         super(FullNode, self).__init__()
-        self._add_input("size", entity.Integer, expand=True)
-        self._add_input("fill_value", entity.Real, optional=True, expand=True)
-        self._add_output("value", entity.Array[entity.Real], expand=True, expression="Array[fill_value]")
+        self.add_input_w_traits("size", entity.Integer, expand=True)
+        self.add_input_w_traits("fill_value", entity.Real, optional=True, expand=True)
+        self.add_output_w_traits("value", entity.Array[entity.Real], expand=True, expression="Array[fill_value]")
 
         self.set_default_value("fill_value", 0.0, entity.Float)
 
@@ -237,10 +237,10 @@ class RangeNode(BuiltinNode):
 
     def __init__(self):
         super(RangeNode, self).__init__()
-        self._add_input("start", entity.Real, optional=True, expand=True)
-        self._add_input("stop", entity.Real, expand=True)
-        self._add_input("step", entity.Real, optional=True, expand=True)
-        self._add_output("value", entity.Array[entity.Real], expand=True, expression="Array[upper(start, stop, step)]")
+        self.add_input_w_traits("start", entity.Real, optional=True, expand=True)
+        self.add_input_w_traits("stop", entity.Real, expand=True)
+        self.add_input_w_traits("step", entity.Real, optional=True, expand=True)
+        self.add_output_w_traits("value", entity.Array[entity.Real], expand=True, expression="Array[upper(start, stop, step)]")
 
         self.set_default_value("start", 0, entity.Integer)
         self.set_default_value("step", 1, entity.Integer)
@@ -260,10 +260,10 @@ class LinspaceNode(BuiltinNode):
 
     def __init__(self):
         super(LinspaceNode, self).__init__()
-        self._add_input("start", entity.Real, optional=True, expand=True)
-        self._add_input("stop", entity.Real, optional=True, expand=True)
-        self._add_input("num", entity.Integer, expand=True)
-        self._add_output("value", entity.Array[entity.Float], expand=True, expression="Array[Float]")
+        self.add_input_w_traits("start", entity.Real, optional=True, expand=True)
+        self.add_input_w_traits("stop", entity.Real, optional=True, expand=True)
+        self.add_input_w_traits("num", entity.Integer, expand=True)
+        self.add_output_w_traits("value", entity.Array[entity.Float], expand=True, expression="Array[Float]")
 
         self.set_default_value("start", 0, entity.Float)
         self.set_default_value("stop", 1, entity.Float)
@@ -282,10 +282,10 @@ class RandomUniformNode(BuiltinNode):
 
     def __init__(self):
         super(RandomUniformNode, self).__init__()
-        self._add_input("low", entity.Real | entity.Array[entity.Real], optional=True, expand=True)
-        self._add_input("high", entity.Real | entity.Array[entity.Real], optional=True, expand=True)
-        self._add_input("size", entity.Integer, expand=True)
-        self._add_output("value", entity.Array[entity.Float], expand=True, expression="Array[Float]")
+        self.add_input_w_traits("low", entity.Real | entity.Array[entity.Real], optional=True, expand=True)
+        self.add_input_w_traits("high", entity.Real | entity.Array[entity.Real], optional=True, expand=True)
+        self.add_input_w_traits("size", entity.Integer, expand=True)
+        self.add_output_w_traits("value", entity.Array[entity.Float], expand=True, expression="Array[Float]")
 
         self.set_default_value("low", 0.0, entity.Float)
         self.set_default_value("high", 1.0, entity.Float)
@@ -304,9 +304,9 @@ class RepeatNode(BuiltinNode):
 
     def __init__(self):
         super(RepeatNode, self).__init__()
-        self._add_input("a", entity.Array, expand=True)
-        self._add_input("repeats", entity.Integer, expand=True)
-        self._add_output("value", entity.Array, expand=True, expression="a")
+        self.add_input_w_traits("a", entity.Array, expand=True)
+        self.add_input_w_traits("repeats", entity.Integer, expand=True)
+        self.add_output_w_traits("value", entity.Array, expand=True, expression="a")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -321,9 +321,9 @@ class TileNode(BuiltinNode):
 
     def __init__(self):
         super(TileNode, self).__init__()
-        self._add_input("a", entity.Array, expand=True)
-        self._add_input("reps", entity.Integer, expand=True)
-        self._add_output("value", entity.Array, expand=True, expression="a")
+        self.add_input_w_traits("a", entity.Array, expand=True)
+        self.add_input_w_traits("reps", entity.Integer, expand=True)
+        self.add_output_w_traits("value", entity.Array, expand=True, expression="a")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -338,12 +338,12 @@ class SliceNode(BuiltinNode):
 
     def __init__(self):
         super(SliceNode, self).__init__()
-        self._add_input("a", entity.Array, expand=True)
-        self._add_output("value", entity.Array, expand=True, expression="a")
+        self.add_input_w_traits("a", entity.Array, expand=True)
+        self.add_output_w_traits("value", entity.Array, expand=True, expression="a")
 
-        self._add_input("start", entity.Integer, optional=True, expand=True)
-        self._add_input("stop", entity.Integer, optional=True, expand=True)
-        self._add_input("step", entity.Integer, optional=True, expand=True)
+        self.add_input_w_traits("start", entity.Integer, optional=True, expand=True)
+        self.add_input_w_traits("stop", entity.Integer, optional=True, expand=True)
+        self.add_input_w_traits("step", entity.Integer, optional=True, expand=True)
 
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -361,8 +361,8 @@ class SumNode(BuiltinNode):
 
     def __init__(self):
         super(SumNode, self).__init__()
-        self._add_input("a", entity.Array[entity.Real], expand=True)
-        self._add_output("value", entity.Real, expand=True, expression="first_arg(a)")
+        self.add_input_w_traits("a", entity.Array[entity.Real], expand=True)
+        self.add_output_w_traits("value", entity.Real, expand=True, expression="first_arg(a)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -376,8 +376,8 @@ class LengthNode(BuiltinNode):
 
     def __init__(self):
         super(LengthNode, self).__init__()
-        self._add_input("a", entity.Array, expand=True)
-        self._add_output("value", entity.Integer, expand=True, expression="Integer")  # why an expression is needed here?
+        self.add_input_w_traits("a", entity.Array, expand=True)
+        self.add_output_w_traits("value", entity.Integer, expand=True, expression="Integer")  # why an expression is needed here?
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -391,9 +391,9 @@ class AddNode(BuiltinNode):
 
     def __init__(self):
         super(AddNode, self).__init__()
-        self._add_input("a", entity.Array[entity.Real] | entity.Real, expand=True)
-        self._add_input("b", entity.Array[entity.Real] | entity.Real, expand=True)
-        self._add_output("value", entity.Array[entity.Real] | entity.Real, expand=True, expression="upper(a, b)")
+        self.add_input_w_traits("a", entity.Array[entity.Real] | entity.Real, expand=True)
+        self.add_input_w_traits("b", entity.Array[entity.Real] | entity.Real, expand=True)
+        self.add_output_w_traits("value", entity.Array[entity.Real] | entity.Real, expand=True, expression="upper(a, b)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -409,9 +409,9 @@ class SubNode(BuiltinNode):
 
     def __init__(self):
         super(SubNode, self).__init__()
-        self._add_input("a", entity.Array | entity.Real, expand=True)
-        self._add_input("b", entity.Array | entity.Real, expand=True)
-        self._add_output("value", entity.Array | entity.Real, expand=True, expression="upper(a, b)")
+        self.add_input_w_traits("a", entity.Array | entity.Real, expand=True)
+        self.add_input_w_traits("b", entity.Array | entity.Real, expand=True)
+        self.add_output_w_traits("value", entity.Array | entity.Real, expand=True, expression="upper(a, b)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -427,9 +427,9 @@ class MulNode(BuiltinNode):
 
     def __init__(self):
         super(MulNode, self).__init__()
-        self._add_input("a", entity.Array | entity.Real, expand=True)
-        self._add_input("b", entity.Array | entity.Real, expand=True)
-        self._add_output("value", entity.Array | entity.Real, expand=True, expression="upper(a, b)")
+        self.add_input_w_traits("a", entity.Array | entity.Real, expand=True)
+        self.add_input_w_traits("b", entity.Array | entity.Real, expand=True)
+        self.add_output_w_traits("value", entity.Array | entity.Real, expand=True, expression="upper(a, b)")
     
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -445,7 +445,7 @@ class DisplayNode(BuiltinNode):
 
     def __init__(self):
         super(DisplayNode, self).__init__()
-        self._add_input("in1", entity.Data)
+        self.add_input_w_traits("in1", entity.Data)
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
     def _execute(self, input_tokens):
@@ -465,21 +465,21 @@ class ScatterNode(BuiltinNode):
         widget = LabelWidget(self.view, name="plot")
         self.add_custom_widget(widget)
 
-        self._add_input("scale", entity.Float, optional=True)
-        self._add_input("x", entity.Array, expand=True)
-        self._add_input("y", entity.Array, expand=True)
+        self.add_input_w_traits("scale", entity.Float, optional=True)
+        self.add_input_w_traits("x", entity.Array, expand=True)
+        self.add_input_w_traits("y", entity.Array, expand=True)
 
         self.set_default_value("scale", 0.25, entity.Float)
 
     def execute(self, input_tokens):
-        input_tokens = dict(self.get_default_value(), **input_tokens)
+        input_tokens = dict(self.default_value, **input_tokens)
         scale = input_tokens["scale"]["value"]
 
         fig = Figure(figsize=(8 * scale, 6 * scale))
         canvas = FigureCanvas(fig)
         ax = fig.add_subplot(111)
 
-        for _input_tokens in expand_input_tokens(input_tokens, self.get_default_value()):
+        for _input_tokens in expand_input_tokens(input_tokens, self.default_value):
             x = _input_tokens["x"]["value"]
             y = _input_tokens["y"]["value"]
             ax.plot(x, y, '.')
@@ -505,7 +505,7 @@ class ScatterNode(BuiltinNode):
 #         # self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
 #         self.add_custom_widget(widget)
 
-#         self._add_output("value", entity.Integer)
+#         self.add_output_w_traits("value", entity.Integer)
 #         # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
     
 #     def _execute(self, input_tokens):
@@ -521,8 +521,8 @@ class InspectNode(BuiltinNode):
 
     def __init__(self):
         super(InspectNode, self).__init__()
-        self._add_input("in1", entity.Object)
-        self._add_output("out1", entity.Object, expression="in1")
+        self.add_input_w_traits("in1", entity.Object)
+        self.add_output_w_traits("out1", entity.Object, expression="in1")
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
@@ -541,10 +541,10 @@ class InspectNode(BuiltinNode):
 #         super(SwitchNode, self).__init__()
 #         # self.__doc = doc
 #         traits = entity.Object  # ANY?
-#         self._add_input("in1", traits)
-#         self._add_input("cond1", entity.Data)
-#         self._add_output("out1", traits, expression="in1")
-#         self._add_output("out2", traits, expression="in1")
+#         self.add_input_w_traits("in1", traits)
+#         self.add_input_w_traits("cond1", entity.Data)
+#         self.add_output_w_traits("out1", traits, expression="in1")
+#         self.add_output_w_traits("out2", traits, expression="in1")
     
 #     def _execute(self, input_tokens):
 #         dst = "out1" if input_tokens["cond1"]["value"] else "out2"

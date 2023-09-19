@@ -5,16 +5,15 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 import uuid
-import itertools
 from collections import deque
 from enum import IntEnum, auto
+import dataclasses
 
 from Qt import QtGui, QtCore
 
 from NodeGraphQt import BaseNode
-from NodeGraphQt.constants import NodePropWidgetEnum, PortTypeEnum
-from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
-import NodeGraphQt.errors
+from NodeGraphQt.constants import NodePropWidgetEnum
+from NodeGraphQt.nodes.port_node import PortInputNode
 
 from nodes import entity
 
@@ -128,6 +127,12 @@ def expand_input_tokens(input_tokens, defaults=None):
 
 class IONode: pass
 
+@dataclasses.dataclass
+class PortTraits:
+    traits: type = entity.Any
+    optional: bool = False
+    expand: bool = False
+
 def trait_node_base(cls):
     class _TraitNodeBase(cls):
 
@@ -137,10 +142,121 @@ def trait_node_base(cls):
             self.__port_traits = {}
             self.__io_mapping = {}
             self.__default_value = {}
-            self.__expandables = []
 
             self.create_property("message", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
 
+        def get_port_traits_def(self, name):
+            if name in self.__port_traits:
+                return self.__port_traits[name].traits
+            return entity.Any
+
+        def get_input_port_traits(self, name):
+            input_port = self.get_input(name)
+
+            for connected in input_port.connected_ports():
+                another = connected.node()
+                if isinstance(another, PortInputNode):
+                    parent_port = another.parent_port
+                    another_traits = parent_port.node().get_input_port_traits(parent_port)
+                    logger.debug(f"get_input_port_traits: {parent_port.node()} {another} {connected} {another_traits}")
+                    return another_traits
+                else:
+                    return another.get_output_port_traits(connected.name())
+            else:
+                if name in self.__default_value:
+                    return self.__default_value[name]["traits"]
+            return self.get_port_traits_def(name)
+
+        def get_output_port_traits(self, name):
+            #XXX: This impl would be too slow. Use cache
+            if name in self.__io_mapping:
+                expression = self.__io_mapping[name]
+                input_traits = {input.name(): self.get_input_port_traits(input.name()) for input in self.input_ports()}
+                # print(f"{expression}: {input_traits}: {name}")
+                _input_traits = {name: unwrap_traits(traits) if self.is_expandable_port(name) else traits for name, traits in input_traits.items()}
+                port_traits = evaluate_traits(expression, _input_traits)[0]
+                return wrap_traits_if(port_traits, (input_traits[name] for name in self.expandable_ports if name in input_traits))
+            return self.get_port_traits_def(name)
+
+        def set_port_traits(self, port, port_traits):
+            assert isinstance(port_traits, PortTraits)
+            self.__port_traits[port.name()] = port_traits
+
+            port_item = port.view
+            conn_type = 'multi' if port_item.multi_connection else 'single'
+            tooltip = '{}: ({})'.format(port_item.name, conn_type)
+            if port_item._locked:
+                tooltip += ' (L)'
+            tooltip += f" [{traits_str(port_traits.traits)}]"
+            port_item.setToolTip(tooltip)
+
+        def update_port_traits(self, port, traits):
+            assert issubclass(traits, entity.Entity)
+            params = dataclasses.asdict(self.__port_traits[port.name()])
+            params["traits"] = traits
+            port_traits = PortTraits(**params)
+            self.set_port_traits(port, port_traits)
+
+        def is_optional_port(self, name):
+            return self.__port_traits[name].optional
+
+        def is_expandable_port(self, name):
+            return self.__port_traits[name].expand
+        
+        @property
+        def expandable_ports(self):
+            for name, port_traits in self.__port_traits.items():
+                if port_traits.expand:
+                    yield name
+
+        def add_input(self, name='input', multi_input=False, display_name=True, color=None, locked=False, painter_func=None):
+            traits = self.get_port_traits_def(name)
+            if entity.is_acceptable(traits, entity.Object):
+                multi_input = False
+                painter_func = painter_func or draw_square_port
+            elif entity.is_acceptable(traits, entity.Data):
+                multi_input = True
+                color = color or (180, 80, 0)
+            return super(_TraitNodeBase, self).add_input(name, multi_input, display_name, color, locked, painter_func)
+
+        def add_output(self, name='input', multi_output=False, display_name=True, color=None, locked=False, painter_func=None):
+            traits = self.get_port_traits_def(name)
+            if entity.is_acceptable(traits, entity.Object):
+                multi_output = False
+                painter_func = painter_func or draw_square_port
+            elif entity.is_acceptable(traits, entity.Data):
+                multi_output = True
+                color = color or (180, 80, 0)
+            return super(_TraitNodeBase, self).add_output(name, multi_output, display_name, color, locked, painter_func)
+
+        def delete_input(self, name):
+            if name in self.__port_traits:
+                del self.__port_traits[name]
+            if name in self.__default_value:
+                del self.__default_value[name]
+            super(_TraitNodeBase, self).delete_input(name)
+        
+        def delete_output(self, name):
+            if name in self.__port_traits:
+                del self.__port_traits[name]
+            if name in self.__io_mapping:
+                del self.__io_mapping[name]
+            super(_TraitNodeBase, self).delete_output(name)
+
+        def set_default_value(self, name, value, traits):
+            assert name in self.__port_traits
+            assert self.__port_traits[name].optional  # check if it's optional
+            assert entity.is_acceptable(traits, self.__port_traits[name].traits)
+            self.__default_value[name] = dict(value=value, traits=traits)
+
+        @property
+        def default_value(self):
+            return self.__default_value.copy()
+
+        @property
+        def io_mapping(self):
+            return self.__io_mapping.copy()
+        
         @property
         def message(self):
             return self.get_proprety('message')
@@ -155,154 +271,31 @@ def trait_node_base(cls):
                 tooltip += f' Message: "{text}"'
             node_item.setToolTip(tooltip)
 
-        def is_optional_port(self, name):
-            return self.__port_traits[name][1]
-
-        def set_default_value(self, name, value, traits):
-            assert name in self.__port_traits
-            assert self.__port_traits[name][1]  # check if it's optional
-            assert entity.is_acceptable(traits, self.__port_traits[name][0])
-            self.__default_value[name] = dict(value=value, traits=traits)
-
-        def get_default_value(self, name=None):
-            if name is None:
-                return self.__default_value  # not protected
-            return self.__defalt_value.get(name, None)
-        
-        def _set_port_tooltip(self, port, text=""):
-            port_item = port.view
-            conn_type = 'multi' if port_item.multi_connection else 'single'
-            tooltip = '{}: ({})'.format(port_item.name, conn_type)
-            if port_item._locked:
-                tooltip += ' (L)'
-            tooltip += text
-            port_item.setToolTip(tooltip)
-
-        def _add_input(self, name, traits, *, optional=False, expand=False):
+        def add_input_w_traits(self, name, traits, *, optional=False, expand=False):
             if expand:
                 traits = traits | wrap_traits(traits)
-                self.__expandables.append(name)
 
             assert not optional or entity.is_acceptable(traits, entity.Data)
-            if entity.is_acceptable(traits, entity.Object):
-                self.add_input(name, multi_input=False, painter_func=draw_square_port)
-            elif entity.is_acceptable(traits, entity.Data):
-                self.add_input(name, color=(180, 80, 0), multi_input=False)
-            else:
-                assert False, 'Never reach here {}'.format(traits)
+            assert entity.is_acceptable(traits, entity.Data) or entity.is_acceptable(traits, entity.Object)
 
-            self.__port_traits[name] = (traits, optional)
-            self._set_port_tooltip(self.get_input(name), f" [{traits_str(traits)}]")
+            port_traits = PortTraits(traits=traits, optional=optional, expand=expand)
+            self.__port_traits[name] = port_traits  # required
+            self.add_input(name)
+            self.set_port_traits(self.get_input(name), port_traits)
 
-        def _add_output(self, name, traits, *, expand=False, expression=None):
+        def add_output_w_traits(self, name, traits, *, expand=False, expression=None):
             if expand:
                 traits = traits | wrap_traits(traits)
-                self.__expandables.append(name)
 
-            if entity.is_acceptable(traits, entity.Object):
-                self.add_output(name, multi_output=False, painter_func=draw_square_port)
-            elif entity.is_acceptable(traits, entity.Data):
-                self.add_output(name, color=(180, 80, 0), multi_output=True)
-            else:
-                assert False, 'Never reach here {}'.format(traits)
+            assert entity.is_acceptable(traits, entity.Data) or entity.is_acceptable(traits, entity.Object)
 
-            self.__port_traits[name] = (traits, False)
             if expression is not None:
                 self.__io_mapping[name] = expression
-            self._set_port_tooltip(self.get_output(name), f" [{traits_str(traits)}]")
 
-        def delete_input(self, name):
-            if name in self.__port_traits:
-                del self.__port_traits[name]
-            if name in self.__default_value:
-                del self.__default_value[name]
-            if name in self.__expandables:
-                self.__expandables.remove(name)
-            super(_TraitNodeBase, self).delete_input(name)
-        
-        def delete_output(self, name):
-            if name in self.__port_traits:
-                del self.__port_traits[name]
-            if name in self.__io_mapping:
-                del self.__io_mapping[name]
-            if name in self.__expandables:
-                self.__expandables.remove(name)
-            super(_TraitNodeBase, self).delete_output(name)
-        
-        def has_io_mapping(self, name):
-            return name in self.__io_mapping
-        
-        def delete_io_mapping(self, name):
-            assert name in self.__io_mapping
-            del self.__io_mapping[name]
-
-        def io_mapping(self):
-            return self.__io_mapping.copy()
-
-        def _get_connected_traits(self, input_port):
-            for connected in input_port.connected_ports():
-                another = connected.node()
-                if isinstance(another, PortInputNode):
-                    parent_port = another.parent_port
-                    another_traits = parent_port.node()._get_connected_traits(parent_port)
-                    # print(f"{parent_port.node()} {another} {connected} {another_traits}")
-                    return another_traits
-                else:
-                    return another.get_port_traits(connected.name())
-            else:
-                if input_port.name() in self.__default_value:
-                    return self.__default_value[input_port.name()]["traits"]
-            return self.__port_traits[input_port.name()][0]
-        
-        def get_port_traits(self, name):
-            #XXX: This impl would be too slow. Use cache
-            if name in self.__io_mapping:
-                expression = self.__io_mapping[name]
-                input_traits = {input.name(): self._get_connected_traits(input) for input in self.input_ports()}
-                # print(f"{expression}: {input_traits}: {name}")
-                _input_traits = {name: unwrap_traits(traits) if name in self.__expandables else traits for name, traits in input_traits.items()}
-                port_traits = evaluate_traits(expression, _input_traits)[0]
-                return wrap_traits_if(port_traits, (input_traits[name] for name in self.__expandables if name in input_traits))
-            return self.__port_traits[name][0]
-        
-        def _get_port_traits(self, name):
-            return self.__port_traits[name]
-        
-        def _set_port_traits(self, name, traits, optional):
-            self.__port_traits[name] = (traits, optional)
-
-        def set_ports(self, port_data):
-            if not self.port_deletion_allowed():
-                raise NodeGraphQt.errors.PortError(
-                    'Ports cannot be set on this node because '
-                    '"set_port_deletion_allowed" is not enabled on this node.')
-
-            for port in self._inputs:
-                self._view.delete_input(port.view)
-                port.model.node = None
-            for port in self._outputs:
-                self._view.delete_output(port.view)
-                port.model.node = None
-            self._inputs = []
-            self._outputs = []
-            self._model.outputs = {}
-            self._model.inputs = {}
-
-            [self.add_input(name=port['name'],
-                            multi_input=port['multi_connection'],
-                            display_name=port['display_name'],
-                            locked=port.get('locked') or False,
-                            painter_func=(draw_square_port if entity.is_acceptable(self._get_port_traits(port['name'])[0], entity.Object) else None),  #MODIFIED
-                            )
-            for port in port_data['input_ports']]
-            [self.add_output(name=port['name'],
-                            multi_output=port['multi_connection'],
-                            display_name=port['display_name'],
-                            locked=port.get('locked') or False,
-                            painter_func=(draw_square_port if entity.is_acceptable(self._get_port_traits(port['name'])[0], entity.Object) else None),  #MODIFIED,
-                            )
-            for port in port_data['output_ports']]
-            self._view.draw_node()
+            port_traits = PortTraits(traits=traits, optional=False, expand=expand)
+            self.__port_traits[name] = port_traits  # required
+            self.add_output(name)
+            self.set_port_traits(self.get_output(name), port_traits)
 
         def check(self):
             is_valid = True
@@ -312,43 +305,55 @@ def trait_node_base(cls):
             #     node.set_property("station", station, push_undo=False)
             #     is_valid = is_valid and station != ""
 
-            for port in itertools.chain(
-                self.input_ports(), self.output_ports()
-            ):
-                port_traits = self.get_port_traits(port.name())
-
+            for port in self.input_ports():
+                port_traits = self.get_input_port_traits(port.name())
                 connected_ports = port.connected_ports()
-                if len(connected_ports) == 0:
-                    if self.is_optional_port(port.name()):
-                        pass
-                    elif port.type_() == PortTypeEnum.OUT.value and entity.is_acceptable(port_traits, entity.Data):
-                        pass
-                    else:
-                        is_valid = False
-                        error_msg = f"Port [{port.name()}] is disconnected"
-                        break
+
+                if len(connected_ports) == 0 and not self.is_optional_port(port.name()):
+                    is_valid = False
+                    error_msg = f"Port [{port.name()}] is disconnected"
+                    break
 
                 for another_port in connected_ports:
                     another = another_port.node()
 
                     if isinstance(another, PortInputNode):
                         parent_port = another.parent_port
-                        another_traits = parent_port.node()._get_connected_traits(parent_port)
-                    elif isinstance(another, PortOutputNode):
-                        parent_port = another.parent_port
-                        another_traits = parent_port.node().get_port_traits(parent_port.name())
+                        another_traits = parent_port.node().get_input_port_traits(parent_port.name())
                     else:
                         # assert isinstance(another, (OFPNode, OFPGroupNode))
-                        another_traits = another.get_port_traits(another_port.name())
+                        another_traits = another.get_output_port_traits(another_port.name())
                     
-                    if (
-                    (port.type_() == PortTypeEnum.IN.value and not entity.is_acceptable(another_traits, port_traits))
-                        or (port.type_() == PortTypeEnum.OUT.value and not entity.is_acceptable(port_traits, another_traits))
-                    ):
+                    if not entity.is_acceptable(another_traits, port_traits):
                         logger.info("%s %s %s; %s %s %s", self.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
                         is_valid = False
                         error_msg = f"Port [{port.name()}] traits mismatches. [{traits_str(port_traits)}] expected. [{traits_str(another_traits)}] given"
                         break
+
+            for port in self.output_ports():
+                port_traits = self.get_output_port_traits(port.name())
+
+                connected_ports = port.connected_ports()
+                if len(connected_ports) == 0 and not entity.is_acceptable(port_traits, entity.Data):
+                    is_valid = False
+                    error_msg = f"Port [{port.name()}] is disconnected"
+                    break
+
+                # for another_port in connected_ports:
+                #     another = another_port.node()
+
+                #     if isinstance(another, PortOutputNode):
+                #         parent_port = another.parent_port
+                #         another_traits = parent_port.node().get_output_port_traits(parent_port.name())
+                #     else:
+                #         # assert isinstance(another, (OFPNode, OFPGroupNode))
+                #         another_traits = another.get_inport_traits(another_port.name())
+                    
+                #     if not entity.is_acceptable(port_traits, another_traits):
+                #         logger.info("%s %s %s; %s %s %s", self.NODE_NAME, port.type_(), port_traits, another.NODE_NAME, another_port.type_(), another_traits)
+                #         is_valid = False
+                #         error_msg = f"Port [{port.name()}] traits mismatches. [{traits_str(port_traits)}] expected. [{traits_str(another_traits)}] given"
+                #         break
 
             if not is_valid:
                 self.set_node_status(NodeStatusEnum.ERROR)
@@ -364,7 +369,7 @@ def trait_node_base(cls):
         def execute(self, input_tokens):
             input_tokens = dict(self.__default_value, **input_tokens)
 
-            if not any(entity.is_acceptable(input_tokens[name]["traits"], entity._Spread) for name in self.__expandables if name in input_tokens):
+            if not any(entity.is_acceptable(input_tokens[name]["traits"], entity._Spread) for name in self.expandable_ports if name in input_tokens):
                 # no expansion
                 return self._execute(input_tokens)
             else:
@@ -480,11 +485,13 @@ class ObjectOFPNode(OFPNode):
         self.create_property('station', "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
 
     def _execute(self, input_tokens):
+        io_mapping = self.io_mapping
+
         output_tokens = {}
         for output in self.output_ports():
-            traits = self.get_port_traits(output.name())
-            if output.name() in self.io_mapping():
-                traits_str = self.io_mapping()[output.name()]
+            traits = self.get_output_port_traits(output.name())
+            if output.name() in io_mapping:
+                traits_str = io_mapping[output.name()]
                 if traits_str in input_tokens:
                     value = input_tokens[traits_str]
                 else:
@@ -505,11 +512,13 @@ class DataOFPNode(OFPNode):
         super(DataOFPNode, self).__init__()
     
     def _execute(self, input_tokens):
+        io_mapping = self.io_mapping
+
         output_tokens = {}
         for output in self.output_ports():
-            traits = self.get_port_traits(output.name())
-            if output.name() in self.io_mapping():
-                traits_str = self.io_mapping()[output.name()]
+            traits = self.get_output_port_traits(output.name())
+            if output.name() in io_mapping:
+                traits_str = io_mapping[output.name()]
                 if traits_str in input_tokens:
                     value = input_tokens[traits_str]
                 else:
