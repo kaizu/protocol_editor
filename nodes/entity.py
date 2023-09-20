@@ -66,14 +66,12 @@ def is_acceptable(one, another):
         # return any(_is_acceptable(one, x) for x in another.__args__)
         return any(is_acceptable(one, x) for x in another.__args__)
     elif isinstance(another, typing._GenericAlias):
-        if isinstance(one, typing._GenericAlias):
-            return (
-                _is_acceptable(one, another.__origin__)
-                and len(one.__args__) == len(another.__args__)
-                and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
-            )
-        else:
-            return False
+        return (
+            isinstance(one, typing._GenericAlias)
+            and _is_acceptable(one, another.__origin__)
+            and len(one.__args__) == len(another.__args__)
+            and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
+        )
     else:
         assert False, f"Never reach here: {another} ({type(another)})"
 
@@ -90,6 +88,8 @@ Any = Object | Data
 # Scalar
 
 class Scalar(Data): pass
+
+class Boolean(Scalar): pass
 
 class Integer(Scalar): pass
 

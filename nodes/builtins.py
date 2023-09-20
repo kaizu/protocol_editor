@@ -551,21 +551,76 @@ class InspectNode(BuiltinNode):
         self.set_property("in1", str(input_tokens["in1"]))
         return {"out1": input_tokens["in1"].copy()}
 
-# class SwitchNode(BuiltinNode):
+class SwitchNode(BuiltinNode):
 
-#     __identifier__ = "builtins"
+    __identifier__ = "builtins"
 
-#     NODE_NAME = "SwtichNode"
+    NODE_NAME = "Swtitch"
 
-#     def __init__(self):
-#         super(SwitchNode, self).__init__()
-#         # self.__doc = doc
-#         traits = entity.Object  # ANY?
-#         self.add_input_w_traits("in1", traits)
-#         self.add_input_w_traits("cond1", entity.Data)
-#         self.add_output_w_traits("out1", traits, expression="in1")
-#         self.add_output_w_traits("out2", traits, expression="in1")
+    def __init__(self):
+        super(SwitchNode, self).__init__()
+
+        self.add_input_w_traits("in1", entity.Data)
+        self.add_input_w_traits("in2", entity.Data)
+        self.add_input_w_traits("cond", entity.Boolean, expand=True)  #TODO: entity.Array[entity.Boolean] -> Array[in1]
+        self.add_output_w_traits("value", entity.Data, expand=True, expression="in1")
+
+    def check(self):
+        logger.debug("SwitchNode: check")
+        if not super(SwitchNode, self).check():
+            return False
+        
+        traits1 = self.get_input_port_traits('in1')
+        traits2 = self.get_input_port_traits('in2')
+        if traits1 != traits2:
+            self.set_node_status(NodeStatusEnum.ERROR)
+            self.message = f"Port [in2] has wrong traits [{traits_str(traits2)}]. [{traits_str(traits1)}] expected"
+            return False
+        return True
     
-#     def _execute(self, input_tokens):
-#         dst = "out1" if input_tokens["cond1"]["value"] else "out2"
-#         return {dst: input_tokens["in1"]}
+    def _execute(self, input_tokens):
+        cond = input_tokens["cond"]["value"]
+        src = "in1" if cond else "in2"
+        return {"value": input_tokens[src]}
+
+class BooleanTrueNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "BooleanTrue"
+
+    def __init__(self):
+        super(BooleanTrueNode, self).__init__()
+        self.add_output_w_traits("out", entity.Boolean)
+    
+    def _execute(self, input_tokens):
+        return {"out": {"value": True, "traits": entity.Boolean}}
+    
+class BooleanFalseNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "BooleanFalse"
+
+    def __init__(self):
+        super(BooleanFalseNode, self).__init__()
+        self.add_output_w_traits("out", entity.Boolean)
+    
+    def _execute(self, input_tokens):
+        return {"out": {"value": False, "traits": entity.Boolean}}
+
+class BooleanNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Boolean"
+
+    def __init__(self):
+        super(BooleanNode, self).__init__()
+        self.add_output_w_traits("out", entity.Boolean)
+
+        self.add_checkbox("value", state=True)
+    
+    def _execute(self, input_tokens):
+        value = self.get_property("value")
+        return {"out": {"value": value, "traits": entity.Boolean}}
