@@ -104,9 +104,10 @@ class IONode: pass
 
 @dataclasses.dataclass
 class PortTraits:
-    traits: type = entity.Any
+    traits: type = entity.Entity
     free: bool = False
     expand: bool = False
+    optional: bool = False
 
 def trait_node_base(cls):
     class _TraitNodeBase(cls):
@@ -142,6 +143,28 @@ def trait_node_base(cls):
                     return self.__default_value[name]["traits"]
             return self.get_port_traits_def(name)
 
+        def is_optional(self, name=None):
+            if name is None:
+                for input_port in self.input_ports():
+                    if self.is_optional(input_port.name()):
+                        return True
+                return False
+            else:
+                input_port = self.get_input(name)
+                port_traits = self.__port_traits[name]
+                traits = self.get_input_port_traits(name)
+
+                if not port_traits.optional:
+                    return False
+                if port_traits.expand and entity.is_spread(traits):
+                    traits_def = port_traits.traits  # self.get_port_traits_def(name)
+                    assert len(traits.__args__) == 1, traits
+                    if entity.is_acceptable(traits.__args__[0], traits_def):
+                        # expand
+                        traits = entity.first_arg(traits)
+                return entity.is_optional(traits)
+            assert False, "Never get here"
+
         def get_output_port_traits(self, name):
             #XXX: This impl would be too slow. Use cache
             if name in self.__io_mapping:
@@ -149,13 +172,20 @@ def trait_node_base(cls):
                 expandables = self.list_expandables(input_traits)
 
                 _input_traits = {
-                    name: traits if name not in expandables else entity.first_arg(traits)
-                    for name, traits in input_traits.items()
+                    _name: _traits if _name not in expandables else entity.first_arg(_traits)
+                    for _name, _traits in input_traits.items()
+                }
+                _input_traits = {
+                    _name: _traits if not self.is_optional(_name) else entity.first_arg(_traits)
+                    for _name, _traits in _input_traits.items()
                 }
                 expression = self.__io_mapping[name]
                 # print(f"{expression}: {input_traits}: {name}")
                 port_traits, _ = evaluate_traits(expression, _input_traits)
 
+                if self.is_optional():
+                    assert self.__port_traits[name].optional, f"{self.get_port_traits_def(name)}"
+                    port_traits = entity.Optional[port_traits]
                 if len(expandables) == 0:
                     return port_traits
                 else:
@@ -255,19 +285,23 @@ def trait_node_base(cls):
                 tooltip += f' Message: "{text}"'
             node_item.setToolTip(tooltip)
 
-        def add_input_w_traits(self, name, traits, *, free=False, expand=False):
+        def add_input_w_traits(self, name, traits, *, free=False, expand=False, optional=False):
+            if optional:
+                traits = traits | entity.Optional[traits]
             if expand:
                 traits = traits | entity.Spread[traits]
 
             assert not free or entity.is_data(traits)
             assert entity.is_object(traits) or entity.is_data(traits)
 
-            port_traits = PortTraits(traits=traits, free=free, expand=expand)
+            port_traits = PortTraits(traits=traits, free=free, expand=expand, optional=optional)
             self.__port_traits[name] = port_traits  # required
             self.add_input(name)
             self.set_port_traits(self.get_input(name), port_traits)
 
-        def add_output_w_traits(self, name, traits, *, expand=False, expression=None):
+        def add_output_w_traits(self, name, traits, *, expand=False, expression=None, optional=False):
+            if optional:
+                traits = traits | entity.Optional[traits]
             if expand:
                 traits = traits | entity.Spread[traits]
                 expression = expression or traits_str(traits)
@@ -277,7 +311,7 @@ def trait_node_base(cls):
             if expression is not None:
                 self.__io_mapping[name] = expression
 
-            port_traits = PortTraits(traits=traits, free=False, expand=expand)
+            port_traits = PortTraits(traits=traits, free=False, expand=expand, optional=optional)
             self.__port_traits[name] = port_traits  # required
             self.add_output(name)
             self.set_port_traits(self.get_output(name), port_traits)
@@ -341,19 +375,26 @@ def trait_node_base(cls):
                     expandables.append(name)
             return tuple(expandables)
 
-        def execute(self, input_tokens):
-            input_tokens = dict(self.__default_value, **input_tokens)
+        def __execute_optional(self, input_tokens):
+            if all(not self.__port_traits[name].optional for name in input_tokens.keys()):
+                output_tokens = self._execute(input_tokens)
+            else:
+                # X -> Optional[X]
+                _input_tokens = {name: {"value": token["value"], "traits": entity.Optional[token["traits"]] if self.__port_traits[name].optional and not entity.is_optional(token["traits"]) else token["traits"]} for name, token in input_tokens.items()}
+                assert all(entity.is_optional(token["traits"]) for name, token in _input_tokens.items() if self.__port_traits[name].optional), f"{_input_tokens}"
+                output_tokens = self._execute(_input_tokens)
+                assert all(entity.is_optional(token["traits"]) for name, token in output_tokens.items() if self.__port_traits[name].optional), f"{output_tokens}"
+                if not self.is_optional():
+                    # Optional[X] -> X
+                    output_tokens = {name: {"value": token["value"], "traits": entity.first_arg(token["traits"]) if self.__port_traits[name].optional else token["traits"]} for name, token in output_tokens.items()}
+            return output_tokens
 
-            input_traits = {input_port.name(): self.get_input_port_traits(input_port.name()) for input_port in self.input_ports()}
-            output_traits = {output_port.name(): self.get_output_port_traits(output_port.name()) for output_port in self.output_ports()}
-            assert all(_token["traits"] == input_traits[_name] for _name, _token in input_tokens.items()), f"{input_tokens} {input_traits}"
-
-
+        def __execute_expand(self, input_tokens):
             expandables = self.list_expandables({name: token["traits"] for name, token in input_tokens.items()})
 
             if len(expandables) == 0:
                 # no expansion
-                return self._execute(input_tokens)
+                return self.__execute_optional(input_tokens)
 
             loop_items = [name for name, token in input_tokens.items() if name not in expandables and entity.is_object(token["traits"])]
 
@@ -361,7 +402,7 @@ def trait_node_base(cls):
             # updates = {}
             for _input_tokens in expand_input_tokens(input_tokens, expandables):
                 # _input_tokens.update(updates)
-                _output_tokens = self._execute(_input_tokens)
+                _output_tokens = self.__execute_optional(_input_tokens)
                 results.append(_output_tokens)
                 # updates = {self.__io_mapping[name]: token for name, token in _output_tokens.items() if name in loop_items}
                 
@@ -378,6 +419,18 @@ def trait_node_base(cls):
                         "value": [result[name]["value"] for result in results],
                         "traits": entity.Spread[results[0][name]["traits"]]
                     }
+            return output_tokens
+        
+        def execute(self, input_tokens):
+            input_tokens = dict(self.__default_value, **input_tokens)
+
+            input_traits = {input_port.name(): self.get_input_port_traits(input_port.name()) for input_port in self.input_ports()}
+            output_traits = {output_port.name(): self.get_output_port_traits(output_port.name()) for output_port in self.output_ports()}
+            assert all(_token["traits"] == input_traits[_name] for _name, _token in input_tokens.items()), f"{input_tokens} {input_traits}"
+
+            output_tokens = self.__execute_expand(input_tokens)
+            assert len(output_tokens) == len(output_traits), f"{output_tokens} {output_traits}"
+            assert all(_token["traits"] == output_traits[_name] for _name, _token in output_tokens.items()), f"{output_tokens} {output_traits}"
             return output_tokens
 
     return _TraitNodeBase

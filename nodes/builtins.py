@@ -150,7 +150,7 @@ class GroupObjectNode(BuiltinNode):
             another_traits = self.get_input_port_traits(f'in{i+1}')
             if another_traits != traits:
                 self.set_node_status(NodeStatusEnum.ERROR)
-                self.message = f"Port [in{i+1}] has wrong traits [{traits_str(another_traits)}]. [{traits_str(traits)}] expected"
+                self.message = f"Port [in{i+1}] has wrong traits [{traits_str(another_traits)}]. Port [in1] has [{traits_str(traits)}]"
                 return False
         return True
     
@@ -167,7 +167,7 @@ class GroupObjectNode(BuiltinNode):
             return
         elif n > nports:
             for i in range(nports, n):
-                self.add_input_w_traits(f"in{i+1}", entity.Object)
+                self.add_input_w_traits(f"in{i+1}", entity.Any[entity.Object])
         elif n < nports:
             for i in range(nports, n, -1):
                 name = f"in{i}"
@@ -541,8 +541,8 @@ class InspectNode(BuiltinNode):
 
     def __init__(self):
         super(InspectNode, self).__init__()
-        self.add_input_w_traits("in1", entity.Any[entity.Object])
-        self.add_output_w_traits("out1", entity.Any[entity.Object], expression="in1")
+        self.add_input_w_traits("in1", entity.Any[entity.Object], optional=True)
+        self.add_output_w_traits("out1", entity.Any[entity.Object], expression="in1", optional=True)
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     

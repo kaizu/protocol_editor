@@ -52,10 +52,12 @@ class DummyServer(ServerBase):
 
     def dispense_liquid_96wells(self, obj, data, channel):
         logger.info(f"{self.__class__.__name__}: {inspect.currentframe().f_code.co_name}: ")
+        assert obj["value"] is not None
         return
 
     def read_absorbance_3colors(self, obj):
         logger.info(f"{self.__class__.__name__}: {inspect.currentframe().f_code.co_name}: ")
+        assert obj["value"] is not None
         data = [
             numpy.zeros(96, dtype=numpy.float64),
             numpy.zeros(96, dtype=numpy.float64),
