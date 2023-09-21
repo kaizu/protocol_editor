@@ -583,31 +583,31 @@ class SwitchNode(BuiltinNode):
         src = "in1" if cond else "in2"
         return {"value": input_tokens[src]}
 
-class BooleanTrueNode(BuiltinNode):
+# class BooleanTrueNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+#     __identifier__ = "builtins"
 
-    NODE_NAME = "BooleanTrue"
+#     NODE_NAME = "BooleanTrue"
 
-    def __init__(self):
-        super(BooleanTrueNode, self).__init__()
-        self.add_output_w_traits("out", entity.Boolean)
+#     def __init__(self):
+#         super(BooleanTrueNode, self).__init__()
+#         self.add_output_w_traits("out", entity.Boolean)
     
-    def _execute(self, input_tokens):
-        return {"out": {"value": True, "traits": entity.Boolean}}
+#     def _execute(self, input_tokens):
+#         return {"out": {"value": True, "traits": entity.Boolean}}
     
-class BooleanFalseNode(BuiltinNode):
+# class BooleanFalseNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+#     __identifier__ = "builtins"
 
-    NODE_NAME = "BooleanFalse"
+#     NODE_NAME = "BooleanFalse"
 
-    def __init__(self):
-        super(BooleanFalseNode, self).__init__()
-        self.add_output_w_traits("out", entity.Boolean)
+#     def __init__(self):
+#         super(BooleanFalseNode, self).__init__()
+#         self.add_output_w_traits("out", entity.Boolean)
     
-    def _execute(self, input_tokens):
-        return {"out": {"value": False, "traits": entity.Boolean}}
+#     def _execute(self, input_tokens):
+#         return {"out": {"value": False, "traits": entity.Boolean}}
 
 class BooleanNode(BuiltinNode):
 
@@ -624,6 +624,20 @@ class BooleanNode(BuiltinNode):
     def _execute(self, input_tokens):
         value = self.get_property("value")
         return {"out": {"value": value, "traits": entity.Boolean}}
+
+class LogicalNotNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "LogicalNot"
+
+    def __init__(self):
+        super(LogicalNotNode, self).__init__()
+        self.add_input_w_traits("in1", entity.Boolean, expand=True)
+        self.add_output_w_traits("out1", entity.Boolean, expand=True, expression="Boolean")
+    
+    def _execute(self, input_tokens):
+        return {"out1": {"value": not input_tokens["in1"]["value"], "traits": entity.Boolean}}
 
 class JustNode(BuiltinNode):
 
@@ -642,6 +656,49 @@ class JustNode(BuiltinNode):
         # traits = entity.Optional[input_tokens["in1"]["traits"]]
         # return {"out1": {"value": value, "traits": traits}}
         return {"out1": input_tokens["in1"].copy()}
+
+class MergeNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Merge"
+
+    def __init__(self):
+        super(MergeNode, self).__init__()
+
+        self.add_input_w_traits("in1", entity.Optional[entity.Object], expand=True)
+        self.add_input_w_traits("in2", entity.Optional[entity.Object], expand=True)
+        self.add_output_w_traits("out1", entity.Object, expand=True, expression="first_arg(in1)")
+
+    def check(self):
+        logger.debug("MergeNode: check")
+        if not super(MergeNode, self).check():
+            return False
+        
+        traits1 = self.get_input_port_traits('in1')
+        traits2 = self.get_input_port_traits('in2')
+        if traits1 != traits2:
+            self.set_node_status(NodeStatusEnum.ERROR)
+            self.message = f"Port [in2] has wrong traits [{traits_str(traits2)}]. [{traits_str(traits1)}] expected"
+            return False
+        return True
+    
+    def _execute(self, input_tokens):
+        value1 = input_tokens["in1"]["value"]
+        value2 = input_tokens["in2"]["value"]
+        traits = entity.first_arg(input_tokens["in1"]["traits"])
+
+        if value1 is not None and value2 is None:
+            value = value1
+        elif value1 is None and value2 is not None:
+            value = value2
+        elif value1 is None and value2 is None:
+            assert False, "Both value are None"
+        else:
+            # assert value1 is not None and value2 is not None
+            assert False, f"Both value are not None: {value1} {value2}"
+
+        return {"out1": {"value": value, "traits": traits}}
 
 class BranchNode(BuiltinNode):
 
@@ -666,3 +723,4 @@ class BranchNode(BuiltinNode):
             return {"out1": {"value": value, "traits": traits}, "out2": {"value": None, "traits": traits}}
         else:
             return {"out1": {"value": None, "traits": traits}, "out2": {"value": value, "traits": traits}}
+            
