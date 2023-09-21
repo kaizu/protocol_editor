@@ -123,7 +123,7 @@ def trait_node_base(cls):
         def get_port_traits_def(self, name):
             if name in self.__port_traits:
                 return self.__port_traits[name].traits
-            return entity.Any
+            return entity.Entity
 
         def get_input_port_traits(self, name):
             input_port = self.get_input(name)

@@ -81,7 +81,7 @@ class Object(Entity): pass
 
 class Data(Entity): pass
 
-class Any(typing.Generic[typing.TypeVar("T")]): pass
+class Any(Entity, typing.Generic[typing.TypeVar("T")]): pass
 
 class Spread(Entity, typing.Generic[typing.TypeVar("T")]): pass
 
