@@ -634,13 +634,14 @@ class JustNode(BuiltinNode):
     def __init__(self):
         super(JustNode, self).__init__()
 
-        self.add_input_w_traits("in1", entity.Object)
+        self.add_input_w_traits("in1", entity.Object, expand=True, optional=True)
         self.add_output_w_traits("out1", entity.Optional[entity.Object], expand=True, expression="Optional[in1]")
 
     def _execute(self, input_tokens):
-        value = input_tokens["in1"]["value"]
-        traits = entity.Optional[input_tokens["in1"]["traits"]]
-        return {"out1": {"value": value, "traits": traits}}
+        # value = input_tokens["in1"]["value"]
+        # traits = entity.Optional[input_tokens["in1"]["traits"]]
+        # return {"out1": {"value": value, "traits": traits}}
+        return {"out1": input_tokens["in1"].copy()}
 
 class BranchNode(BuiltinNode):
 
@@ -651,7 +652,7 @@ class BranchNode(BuiltinNode):
     def __init__(self):
         super(BranchNode, self).__init__()
 
-        self.add_input_w_traits("in1", entity.Object)
+        self.add_input_w_traits("in1", entity.Object, expand=True, optional=True)
         self.add_input_w_traits("cond", entity.Boolean, expand=True)
         self.add_output_w_traits("out1", entity.Optional[entity.Object], expand=True, expression="Optional[in1]")
         self.add_output_w_traits("out2", entity.Optional[entity.Object], expand=True, expression="Optional[in1]")
@@ -659,7 +660,8 @@ class BranchNode(BuiltinNode):
     def _execute(self, input_tokens):
         cond = input_tokens["cond"]["value"]
         value = input_tokens["in1"]["value"]
-        traits = entity.Optional[input_tokens["in1"]["traits"]]
+        # traits = entity.Optional[input_tokens["in1"]["traits"]]
+        traits = input_tokens["in1"]["traits"]
         if cond:
             return {"out1": {"value": value, "traits": traits}, "out2": {"value": None, "traits": traits}}
         else:

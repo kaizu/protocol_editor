@@ -88,7 +88,10 @@ def expand_input_tokens(input_tokens, expandables):
         yield input_tokens
     else:
         assert all(token["traits"] != entity.Spread for token in input_tokens.values()), f"Group cannot be bare [{input_tokens}]"
-        max_length = max(len(input_tokens[name]["value"]) for name in expandables)
+        lengths = [len(input_tokens[name]["value"]) for name in expandables]
+        max_length = max(lengths)
+        assert all(x == max_length for x in lengths), f"{input_tokens}"
+
         # assert all(not entity.is_object(token["traits"]) for (name, token) in input_tokens.items() if name not in expandables), f"Object is not copyable [{input_tokens}]"
         for i in range(max_length):
             yield {
@@ -183,8 +186,7 @@ def trait_node_base(cls):
                 # print(f"{expression}: {input_traits}: {name}")
                 port_traits, _ = evaluate_traits(expression, _input_traits)
 
-                if self.is_optional():
-                    assert self.__port_traits[name].optional, f"{self.get_port_traits_def(name)}"
+                if self.is_optional() and self.__port_traits[name].optional:
                     port_traits = entity.Optional[port_traits]
                 if len(expandables) == 0:
                     return port_traits
