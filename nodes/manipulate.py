@@ -37,7 +37,7 @@ class StoreLabwareNode(BuiltinNode):
         super(StoreLabwareNode, self).__init__()
 
         self.add_text_input("where", "where", '')
-        self.add_input_w_traits("in1", entity.Optional[entity.Labware], expand=True)
+        self.add_input_w_traits("in1", entity.Labware, expand=True)
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
@@ -81,8 +81,8 @@ class DispenseLiquid96WellsNode(BuiltinNode):
     def __init__(self):
         super(DispenseLiquid96WellsNode, self).__init__()
 
-        self.add_input_w_traits("in1", entity.Optional[entity.Plate96], expand=True)
-        self.add_output_w_traits("out1", entity.Optional[entity.Plate96], expand=True, expression="in1")
+        self.add_input_w_traits("in1", entity.Plate96, expand=True)
+        self.add_output_w_traits("out1", entity.Plate96, expand=True, expression="in1")
         self.add_input_w_traits("channel", entity.Integer | entity.LiquidClass, free=True, expand=True)
         self.add_input_w_traits("volume", entity.Array[entity.Real], expand=True)
 
@@ -116,9 +116,9 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
     def __init__(self):
         super(ReadAbsorbance3ColorsNode, self).__init__()
 
-        self.add_input_w_traits("in1", entity.Optional[entity.Plate96], expand=True)
-        self.add_output_w_traits("out1", entity.Optional[entity.Plate96], expand=True, expression="in1")
-        self.add_output_w_traits("value", entity.Optional[entity.Spread[entity.Array[entity.Float]]], expand=True, expression="Spread[Array[Float]]")
+        self.add_input_w_traits("in1", entity.Plate96, expand=True)
+        self.add_output_w_traits("out1", entity.Plate96, expand=True, expression="in1")
+        self.add_output_w_traits("value", entity.Spread[entity.Array[entity.Float]], expand=True, expression="Spread[Array[Float]]")
     
     def _execute(self, input_tokens):
         # logger.info(f"ReadAbsorbance3ColorsNode execute")
