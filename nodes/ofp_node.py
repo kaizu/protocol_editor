@@ -343,6 +343,12 @@ def trait_node_base(cls):
 
         def execute(self, input_tokens):
             input_tokens = dict(self.__default_value, **input_tokens)
+
+            input_traits = {input_port.name(): self.get_input_port_traits(input_port.name()) for input_port in self.input_ports()}
+            output_traits = {output_port.name(): self.get_output_port_traits(output_port.name()) for output_port in self.output_ports()}
+            assert all(_token["traits"] == input_traits[_name] for _name, _token in input_tokens.items()), f"{input_tokens} {input_traits}"
+
+
             expandables = self.list_expandables({name: token["traits"] for name, token in input_tokens.items()})
 
             if len(expandables) == 0:

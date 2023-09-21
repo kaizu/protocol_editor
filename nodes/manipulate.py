@@ -127,4 +127,4 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
         else:
             # (data, ), opts = fluent.experiments.read_absorbance_3colors(**params)
             data = experiments.read_absorbance_3colors(input_tokens["in1"])
-        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Optional[entity.Spread[entity.Array[entity.Float]]]}}
+        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Spread[entity.Array[entity.Float]]}}
