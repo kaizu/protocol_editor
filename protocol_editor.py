@@ -129,7 +129,7 @@ def _main_loop(graph, sim):
         if (
             node.get_node_status() == NodeStatusEnum.WAITING
             and all(
-                (node.is_optional_port(input_port.name()) and len(input_port.connected_ports()) == 0)
+                (node.is_free_port(input_port.name()) and len(input_port.connected_ports()) == 0)
                 or sim.has_token((graph_id, node.name(), input_port.name()))
                 for input_port in node.input_ports()
             )
@@ -177,7 +177,7 @@ def declare_node(name, doc):
     def base_node_class(doc):
         for _, traits_str in doc.get('input', {}).items():
             traits, _ = evaluate_traits(traits_str)
-            if entity.is_acceptable(traits, entity.Object):
+            if entity.is_object(traits):
                 return ObjectOFPNode
         for _, traits_str in doc.get('output', {}).items():
             try:
@@ -185,7 +185,7 @@ def declare_node(name, doc):
             except:
                 pass  # io_mapping
             else:
-                if entity.is_acceptable(traits, entity.Object):
+                if entity.is_object(traits):
                     return ObjectOFPNode
         return DataOFPNode
     

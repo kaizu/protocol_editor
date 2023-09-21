@@ -89,7 +89,7 @@ def expand_input_tokens(input_tokens, expandables):
     else:
         assert all(token["traits"] != entity.Spread for token in input_tokens.values()), f"Group cannot be bare [{input_tokens}]"
         max_length = max(len(input_tokens[name]["value"]) for name in expandables)
-        # assert all(not entity.is_acceptable(token["traits"], entity.Object) for (name, token) in input_tokens.items() if name not in expandables), f"Object is not copyable [{input_tokens}]"
+        # assert all(not entity.is_object(token["traits"]) for (name, token) in input_tokens.items() if name not in expandables), f"Object is not copyable [{input_tokens}]"
         for i in range(max_length):
             yield {
                 name: (
@@ -105,7 +105,7 @@ class IONode: pass
 @dataclasses.dataclass
 class PortTraits:
     traits: type = entity.Any
-    optional: bool = False
+    free: bool = False
     expand: bool = False
 
 def trait_node_base(cls):
@@ -181,8 +181,8 @@ def trait_node_base(cls):
             port_traits = PortTraits(**params)
             self.set_port_traits(port, port_traits)
 
-        def is_optional_port(self, name):
-            return self.__port_traits[name].optional
+        def is_free_port(self, name):
+            return self.__port_traits[name].free
 
         def is_expandable_port(self, name):
             return self.__port_traits[name].expand
@@ -195,20 +195,20 @@ def trait_node_base(cls):
 
         def add_input(self, name='input', multi_input=False, display_name=True, color=None, locked=False, painter_func=None):
             traits = self.get_port_traits_def(name)
-            if entity.is_acceptable(traits, entity.Object):
+            if entity.is_object(traits):
                 multi_input = False
                 painter_func = painter_func or draw_square_port
-            elif entity.is_acceptable(traits, entity.Data):
+            elif entity.is_data(traits):
                 multi_input = False
                 color = color or (180, 80, 0)
             return super(_TraitNodeBase, self).add_input(name, multi_input, display_name, color, locked, painter_func)
 
         def add_output(self, name='input', multi_output=False, display_name=True, color=None, locked=False, painter_func=None):
             traits = self.get_port_traits_def(name)
-            if entity.is_acceptable(traits, entity.Object):
+            if entity.is_object(traits):
                 multi_output = False
                 painter_func = painter_func or draw_square_port
-            elif entity.is_acceptable(traits, entity.Data):
+            elif entity.is_data(traits):
                 multi_output = True
                 color = color or (180, 80, 0)
             return super(_TraitNodeBase, self).add_output(name, multi_output, display_name, color, locked, painter_func)
@@ -229,7 +229,7 @@ def trait_node_base(cls):
 
         def set_default_value(self, name, value, traits):
             assert name in self.__port_traits
-            assert self.__port_traits[name].optional  # check if it's optional
+            assert self.__port_traits[name].free  # check if it's free
             assert entity.is_acceptable(traits, self.__port_traits[name].traits)
             self.__default_value[name] = dict(value=value, traits=traits)
 
@@ -255,14 +255,14 @@ def trait_node_base(cls):
                 tooltip += f' Message: "{text}"'
             node_item.setToolTip(tooltip)
 
-        def add_input_w_traits(self, name, traits, *, optional=False, expand=False):
+        def add_input_w_traits(self, name, traits, *, free=False, expand=False):
             if expand:
                 traits = traits | entity.Spread[traits]
 
-            assert not optional or entity.is_acceptable(traits, entity.Data)
-            assert entity.is_acceptable(traits, entity.Data) or entity.is_acceptable(traits, entity.Object)
+            assert not free or entity.is_data(traits)
+            assert entity.is_object(traits) or entity.is_data(traits)
 
-            port_traits = PortTraits(traits=traits, optional=optional, expand=expand)
+            port_traits = PortTraits(traits=traits, free=free, expand=expand)
             self.__port_traits[name] = port_traits  # required
             self.add_input(name)
             self.set_port_traits(self.get_input(name), port_traits)
@@ -272,12 +272,12 @@ def trait_node_base(cls):
                 traits = traits | entity.Spread[traits]
                 expression = expression or traits_str(traits)
 
-            assert entity.is_acceptable(traits, entity.Data) or entity.is_acceptable(traits, entity.Object)
+            assert entity.is_object(traits) or entity.is_data(traits)
 
             if expression is not None:
                 self.__io_mapping[name] = expression
 
-            port_traits = PortTraits(traits=traits, optional=False, expand=expand)
+            port_traits = PortTraits(traits=traits, free=False, expand=expand)
             self.__port_traits[name] = port_traits  # required
             self.add_output(name)
             self.set_port_traits(self.get_output(name), port_traits)
@@ -295,7 +295,7 @@ def trait_node_base(cls):
                 connected_ports = port.connected_ports()
 
                 if len(connected_ports) == 0:
-                    if not self.is_optional_port(port.name()):
+                    if not self.is_free_port(port.name()):
                         is_valid = False
                         error_msg = f"Port [{port.name()}] is disconnected"
                         break
@@ -312,7 +312,7 @@ def trait_node_base(cls):
                 port_traits_def = self.get_port_traits_def(port.name())
 
                 connected_ports = port.connected_ports()
-                if len(connected_ports) == 0 and not entity.is_acceptable(port_traits_def, entity.Data):
+                if len(connected_ports) == 0 and entity.is_object(port_traits_def):
                     is_valid = False
                     error_msg = f"Port [{port.name()}] is disconnected"
                     break
@@ -349,7 +349,7 @@ def trait_node_base(cls):
                 # no expansion
                 return self._execute(input_tokens)
 
-            loop_items = [name for name, token in input_tokens.items() if name not in expandables and entity.is_acceptable(token["traits"], entity.Object)]
+            loop_items = [name for name, token in input_tokens.items() if name not in expandables and entity.is_object(token["traits"])]
 
             results = []
             # updates = {}

@@ -37,7 +37,7 @@ class StoreLabwareNode(BuiltinNode):
         super(StoreLabwareNode, self).__init__()
 
         self.add_text_input("where", "where", '')
-        self.add_input_w_traits("in1", entity.Labware, expand=True)
+        self.add_input_w_traits("in1", entity.Optional[entity.Labware], expand=True)
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
@@ -45,10 +45,11 @@ class StoreLabwareNode(BuiltinNode):
         assert "in1" in input_tokens
         self.set_property("in1", str(input_tokens["in1"]))
         where = self.get_property("where")
-        if where == "":
-            experiments.dispose_labware(input_tokens["in1"])
-        else:
-            experiments.store_labware(input_tokens["in1"], where)
+        if input_tokens["in1"]["value"] is not None:  #XXX:
+            if where == "":
+                experiments.dispose_labware(input_tokens["in1"])
+            else:
+                experiments.store_labware(input_tokens["in1"], where)
         return {}
     
 class StoreArtifactsNode(BuiltinNode):
@@ -61,7 +62,7 @@ class StoreArtifactsNode(BuiltinNode):
         super(StoreArtifactsNode, self).__init__()
 
         self.add_text_input("where", "where")
-        self.add_input_w_traits("in1", entity.Data)
+        self.add_input_w_traits("in1", entity.Any[entity.Data])  #FIXME
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
@@ -80,9 +81,9 @@ class DispenseLiquid96WellsNode(BuiltinNode):
     def __init__(self):
         super(DispenseLiquid96WellsNode, self).__init__()
 
-        self.add_input_w_traits("in1", entity.Plate96, expand=True)
-        self.add_output_w_traits("out1", entity.Plate96, expand=True, expression="in1")
-        self.add_input_w_traits("channel", entity.Integer | entity.LiquidClass, optional=True, expand=True)
+        self.add_input_w_traits("in1", entity.Optional[entity.Plate96], expand=True)
+        self.add_output_w_traits("out1", entity.Optional[entity.Plate96], expand=True, expression="in1")
+        self.add_input_w_traits("channel", entity.Integer | entity.LiquidClass, free=True, expand=True)
         self.add_input_w_traits("volume", entity.Array[entity.Real], expand=True)
 
         self.set_default_value("channel", 0, entity.Integer)
@@ -90,6 +91,9 @@ class DispenseLiquid96WellsNode(BuiltinNode):
         self.__channels = {'Pure Water': 0, 'Red Water': 1, 'Blue Water': 2}
     
     def _execute(self, input_tokens):
+        if input_tokens["in1"]["value"] is None:  #XXX:
+            return {"out1": input_tokens["in1"].copy()}
+
         data = input_tokens["volume"]["value"].astype(int).resize(96)
 
         if input_tokens["channel"]["traits"] == entity.LiquidClass:
@@ -112,12 +116,15 @@ class ReadAbsorbance3ColorsNode(BuiltinNode):
     def __init__(self):
         super(ReadAbsorbance3ColorsNode, self).__init__()
 
-        self.add_input_w_traits("in1", entity.Plate96, expand=True)
-        self.add_output_w_traits("out1", entity.Plate96, expand=True, expression="in1")
-        self.add_output_w_traits("value", entity.Spread[entity.Array[entity.Float]], expand=True, expression="Spread[Array[Float]]")
+        self.add_input_w_traits("in1", entity.Optional[entity.Plate96], expand=True)
+        self.add_output_w_traits("out1", entity.Optional[entity.Plate96], expand=True, expression="in1")
+        self.add_output_w_traits("value", entity.Optional[entity.Spread[entity.Array[entity.Float]]], expand=True, expression="Spread[Array[Float]]")
     
     def _execute(self, input_tokens):
         # logger.info(f"ReadAbsorbance3ColorsNode execute")
-        # (data, ), opts = fluent.experiments.read_absorbance_3colors(**params)
-        data = experiments.read_absorbance_3colors(input_tokens["in1"])
-        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Spread[entity.Array[entity.Float]]}}
+        if input_tokens["in1"]["value"] is None:  #XXX:
+            data = None
+        else:
+            # (data, ), opts = fluent.experiments.read_absorbance_3colors(**params)
+            data = experiments.read_absorbance_3colors(input_tokens["in1"])
+        return {"out1": input_tokens["in1"].copy(), "value": {"value": data, "traits": entity.Optional[entity.Spread[entity.Array[entity.Float]]]}}

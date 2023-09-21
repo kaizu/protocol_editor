@@ -67,8 +67,8 @@ class GroupNode(BuiltinNode):
 
         self.set_port_deletion_allowed(True)
 
-        self.add_input_w_traits("in1", entity.Data)
-        self.add_output_w_traits("value", entity.Spread[entity.Data], expression="Spread[in1]")
+        self.add_input_w_traits("in1", entity.Any[entity.Data])
+        self.add_output_w_traits("value", entity.Spread[entity.Any[entity.Data]], expression="Spread[in1]")
 
     def check(self):
         logger.debug("GroupNode: check")
@@ -95,7 +95,7 @@ class GroupNode(BuiltinNode):
         nports = len(self.input_ports())
         if n > nports:
             for i in range(nports, n):
-                self.add_input_w_traits(f"in{i+1}", entity.Data)
+                self.add_input_w_traits(f"in{i+1}", entity.Any[entity.Data])
         elif n < nports:
             for i in range(nports, n, -1):
                 name = f"in{i}"
@@ -138,8 +138,8 @@ class GroupObjectNode(BuiltinNode):
 
         self.set_port_deletion_allowed(True)
 
-        self.add_input_w_traits("in1", entity.Object)
-        self.add_output_w_traits("value", entity.Spread[entity.Object], expression="Spread[in1]")
+        self.add_input_w_traits("in1", entity.Any[entity.Object])
+        self.add_output_w_traits("value", entity.Spread[entity.Any[entity.Object]], expression="Spread[in1]")
 
     def check(self):
         if not super(GroupObjectNode, self).check():
@@ -238,7 +238,7 @@ class FullNode(BuiltinNode):
     def __init__(self):
         super(FullNode, self).__init__()
         self.add_input_w_traits("size", entity.Integer, expand=True)
-        self.add_input_w_traits("fill_value", entity.Real, optional=True, expand=True)
+        self.add_input_w_traits("fill_value", entity.Real, free=True, expand=True)
         self.add_output_w_traits("value", entity.Array[entity.Real], expand=True, expression="Array[fill_value]")
 
         self.set_default_value("fill_value", 0.0, entity.Float)
@@ -256,9 +256,9 @@ class RangeNode(BuiltinNode):
 
     def __init__(self):
         super(RangeNode, self).__init__()
-        self.add_input_w_traits("start", entity.Real, optional=True, expand=True)
+        self.add_input_w_traits("start", entity.Real, free=True, expand=True)
         self.add_input_w_traits("stop", entity.Real, expand=True)
-        self.add_input_w_traits("step", entity.Real, optional=True, expand=True)
+        self.add_input_w_traits("step", entity.Real, free=True, expand=True)
         self.add_output_w_traits("value", entity.Array[entity.Real], expand=True, expression="Array[upper(start, stop, step)]")
 
         self.set_default_value("start", 0, entity.Integer)
@@ -279,8 +279,8 @@ class LinspaceNode(BuiltinNode):
 
     def __init__(self):
         super(LinspaceNode, self).__init__()
-        self.add_input_w_traits("start", entity.Real, optional=True, expand=True)
-        self.add_input_w_traits("stop", entity.Real, optional=True, expand=True)
+        self.add_input_w_traits("start", entity.Real, free=True, expand=True)
+        self.add_input_w_traits("stop", entity.Real, free=True, expand=True)
         self.add_input_w_traits("num", entity.Integer, expand=True)
         self.add_output_w_traits("value", entity.Array[entity.Float], expand=True, expression="Array[Float]")
 
@@ -301,8 +301,8 @@ class RandomUniformNode(BuiltinNode):
 
     def __init__(self):
         super(RandomUniformNode, self).__init__()
-        self.add_input_w_traits("low", entity.Real | entity.Array[entity.Real], optional=True, expand=True)
-        self.add_input_w_traits("high", entity.Real | entity.Array[entity.Real], optional=True, expand=True)
+        self.add_input_w_traits("low", entity.Real | entity.Array[entity.Real], free=True, expand=True)
+        self.add_input_w_traits("high", entity.Real | entity.Array[entity.Real], free=True, expand=True)
         self.add_input_w_traits("size", entity.Integer, expand=True)
         self.add_output_w_traits("value", entity.Array[entity.Float], expand=True, expression="Array[Float]")
 
@@ -360,9 +360,9 @@ class SliceNode(BuiltinNode):
         self.add_input_w_traits("a", entity.Array, expand=True)
         self.add_output_w_traits("value", entity.Array, expand=True, expression="a")
 
-        self.add_input_w_traits("start", entity.Integer, optional=True, expand=True)
-        self.add_input_w_traits("stop", entity.Integer, optional=True, expand=True)
-        self.add_input_w_traits("step", entity.Integer, optional=True, expand=True)
+        self.add_input_w_traits("start", entity.Integer, free=True, expand=True)
+        self.add_input_w_traits("stop", entity.Integer, free=True, expand=True)
+        self.add_input_w_traits("step", entity.Integer, free=True, expand=True)
 
     def _execute(self, input_tokens):
         a = input_tokens["a"]["value"]
@@ -464,7 +464,7 @@ class DisplayNode(BuiltinNode):
 
     def __init__(self):
         super(DisplayNode, self).__init__()
-        self.add_input_w_traits("in1", entity.Data)
+        self.add_input_w_traits("in1", entity.Any[entity.Data])
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
     def _execute(self, input_tokens):
@@ -484,7 +484,7 @@ class ScatterNode(BuiltinNode):
         widget = LabelWidget(self.view, name="plot")
         self.add_custom_widget(widget)
 
-        self.add_input_w_traits("scale", entity.Float, optional=True)
+        self.add_input_w_traits("scale", entity.Float, free=True)
         self.add_input_w_traits("x", entity.Array, expand=True)
         self.add_input_w_traits("y", entity.Array, expand=True)
 
@@ -541,8 +541,8 @@ class InspectNode(BuiltinNode):
 
     def __init__(self):
         super(InspectNode, self).__init__()
-        self.add_input_w_traits("in1", entity.Object)
-        self.add_output_w_traits("out1", entity.Object, expression="in1")
+        self.add_input_w_traits("in1", entity.Any[entity.Object])
+        self.add_output_w_traits("out1", entity.Any[entity.Object], expression="in1")
 
         self.create_property("in1", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
     
@@ -560,10 +560,10 @@ class SwitchNode(BuiltinNode):
     def __init__(self):
         super(SwitchNode, self).__init__()
 
-        self.add_input_w_traits("in1", entity.Data)
-        self.add_input_w_traits("in2", entity.Data)
+        self.add_input_w_traits("in1", entity.Any[entity.Data])
+        self.add_input_w_traits("in2", entity.Any[entity.Data])
         self.add_input_w_traits("cond", entity.Boolean, expand=True)  #TODO: entity.Array[entity.Boolean] -> Array[in1]
-        self.add_output_w_traits("value", entity.Data, expand=True, expression="in1")
+        self.add_output_w_traits("value", entity.Any[entity.Data], expand=True, expression="in1")
 
     def check(self):
         logger.debug("SwitchNode: check")
@@ -624,3 +624,43 @@ class BooleanNode(BuiltinNode):
     def _execute(self, input_tokens):
         value = self.get_property("value")
         return {"out": {"value": value, "traits": entity.Boolean}}
+
+class JustNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Just"
+
+    def __init__(self):
+        super(JustNode, self).__init__()
+
+        self.add_input_w_traits("in1", entity.Object)
+        self.add_output_w_traits("out1", entity.Optional[entity.Object], expand=True, expression="Optional[in1]")
+
+    def _execute(self, input_tokens):
+        value = input_tokens["in1"]["value"]
+        traits = entity.Optional[input_tokens["in1"]["traits"]]
+        return {"out1": {"value": value, "traits": traits}}
+
+class BranchNode(BuiltinNode):
+
+    __identifier__ = "builtins"
+
+    NODE_NAME = "Branch"
+
+    def __init__(self):
+        super(BranchNode, self).__init__()
+
+        self.add_input_w_traits("in1", entity.Object)
+        self.add_input_w_traits("cond", entity.Boolean, expand=True)
+        self.add_output_w_traits("out1", entity.Optional[entity.Object], expand=True, expression="Optional[in1]")
+        self.add_output_w_traits("out2", entity.Optional[entity.Object], expand=True, expression="Optional[in1]")
+
+    def _execute(self, input_tokens):
+        cond = input_tokens["cond"]["value"]
+        value = input_tokens["in1"]["value"]
+        traits = entity.Optional[input_tokens["in1"]["traits"]]
+        if cond:
+            return {"out1": {"value": value, "traits": traits}, "out2": {"value": None, "traits": traits}}
+        else:
+            return {"out1": {"value": None, "traits": traits}, "out2": {"value": value, "traits": traits}}

@@ -56,7 +56,11 @@ class DummyServer(ServerBase):
 
     def read_absorbance_3colors(self, obj):
         logger.info(f"{self.__class__.__name__}: {inspect.currentframe().f_code.co_name}: ")
-        data = numpy.zeros((3, 96), dtype=numpy.float64)
+        data = [
+            numpy.zeros(96, dtype=numpy.float64),
+            numpy.zeros(96, dtype=numpy.float64),
+            numpy.zeros(96, dtype=numpy.float64)
+        ]
         return data
 
 experiments = DummyServer()

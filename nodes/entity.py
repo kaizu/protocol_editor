@@ -15,8 +15,6 @@ import functools
 class _EntityMeta(type):
     
     def __instancecheck__(self, obj):
-        # if self is Any:
-        #     raise TypeError("Entity cannot be used with isinstance()")
         return super().__instancecheck__(obj)
 
     def __repr__(self):
@@ -37,53 +35,141 @@ def is_category(cls):
             return True
     return False
 
-def _is_acceptable(one, another):
-    # print(f"_is_acceptable: {one}, {another}")
-    assert inspect.isclass(another)
-    if inspect.isclass(one):
-        assert issubclass(one, Entity)
-        return issubclass(one, another)
-    elif is_union(one):
-        return all(_is_acceptable(x, another) for x in one.__args__)
-    elif isinstance(one, typing._GenericAlias):
-        assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity), f"{one}"
+# def _is_acceptable(one, another):
+#     # print(f"_is_acceptable: {one}, {another}")
+#     assert inspect.isclass(another)
+#     if inspect.isclass(one):
+#         assert issubclass(one, Entity)
+#         return issubclass(one, another)
+#     elif is_union(one):
+#         return all(_is_acceptable(x, another) for x in one.__args__)
+#     elif isinstance(one, typing._GenericAlias):
+#         assert inspect.isclass(one.__origin__), f"{one}"
+#         return issubclass(one.__origin__, another)
+#     assert False, f"Never reach here [{type(one)}]"
 
-        #XXX:
-        if issubclass(one.__origin__, Spread) and another in (Object, Data):
-            assert len(one.__args__) == 1
-            return _is_acceptable(one.__args__[0], another)
+# def is_acceptable(one, another):
+#     # print(f"is_acceptable: {one}, {another}")
+#     if inspect.isclass(another):
+#         assert issubclass(another, Entity)
+#         return _is_acceptable(one, another)
+#     elif is_union(another):
+#         return any(is_acceptable(one, x) for x in another.__args__)
+#     elif isinstance(another, typing._GenericAlias):
+#         return (
+#             isinstance(one, typing._GenericAlias)
+#             and _is_acceptable(one, another.__origin__)
+#             and len(one.__args__) == len(another.__args__)
+#             and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
+#         )
+#     assert False, f"Never reach here: {another} ({type(another)})"
 
-        return issubclass(one.__origin__, another)
-    else:
-        assert False, f"Never reach here [{type(one)}]"
+# def _is_acceptable(one, another):
+#     assert inspect.isclass(one), f"{one}"
+#     if inspect.isclass(another):
+#         return issubclass(one, another)
+#     elif is_union(another):
+#         return any(_is_acceptable(one, x) for x in another.__args__)
+#     elif isinstance(another, typing._GenericAlias):
+#         assert inspect.isclass(another.__origin__), f"{another}"
+#         if another.__origin__ == Any:
+#             assert len(another.__args__) == 1, f"{another}"
+#             return _is_acceptable(one, another.__args__[0])
+#         return issubclass(one, another.__origin__)
+#     assert False, f"Never reach here [{type(another)}]"
+
+# def is_acceptable(one, another):
+#     if inspect.isclass(one):
+#         assert issubclass(one, Entity)
+#         return _is_acceptable(one, another)
+#     elif is_union(one):
+#         return all(is_acceptable(x, another) for x in one.__args__)
+#     elif isinstance(one, typing._GenericAlias):
+#         if inspect.isclass(another) or is_union(another):
+#             return is_acceptable(one.__origin__, another)
+#         elif isinstance(another, typing._GenericAlias):
+#             if another.__origin__ == Any:
+#                 assert len(another.__args__) == 1, f"{another}"
+#                 return all(is_acceptable(x, another) for x in one.__args__)
+#             else:
+#                 return (
+#                     _is_acceptable(one.__origin__, another.__origin__)
+#                     and len(one.__args__) == len(another.__args__)
+#                     and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
+#                 )
+#     assert False, f"Never reach here [{type(one)}]"
 
 def is_acceptable(one, another):
-    # print(f"is_acceptable: {one}, {another}")
-    if inspect.isclass(another):
-        assert issubclass(another, Entity)
-        return _is_acceptable(one, another)
-    elif is_union(another):
-        # return any(_is_acceptable(one, x) for x in another.__args__)
+    # Union
+    if is_union(one):
+        return all(is_acceptable(x, another) for x in one.__args__)
+    elif not is_union(one) and is_union(another):
         return any(is_acceptable(one, x) for x in another.__args__)
-    elif isinstance(another, typing._GenericAlias):
-        return (
-            isinstance(one, typing._GenericAlias)
-            and _is_acceptable(one, another.__origin__)
-            and len(one.__args__) == len(another.__args__)
-            and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
-        )
-    else:
-        assert False, f"Never reach here: {another} ({type(another)})"
 
-class Any(Entity): pass
+    # typing._GenericAlias
+    if isinstance(one, typing._GenericAlias) and isinstance(another, typing._GenericAlias):
+        if another.__origin__ == Any:
+            assert len(one.__args__) == 1, f"{one}"  #FIXME:
+            return is_acceptable(one.__args__[0], another)
+        else:
+            return (
+                is_acceptable(one.__origin__, another.__origin__)
+                and len(one.__args__) == len(another.__args__)
+                and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
+            )
+    elif isinstance(one, typing._GenericAlias) and not isinstance(another, typing._GenericAlias):
+        assert inspect.isclass(another), f"{another}"
+        return issubclass(one.__origin__, another)
+    elif not isinstance(one, typing._GenericAlias) and isinstance(another, typing._GenericAlias):
+        assert inspect.isclass(one), f"{one}"
+        if another.__origin__ == Any:
+            assert len(another.__args__) == 1, f"{another}"
+            return is_acceptable(one, another.__args__[0])
+        else:
+            return False
+
+    # class
+    assert inspect.isclass(one), f"{one}"
+    assert inspect.isclass(another), f"{another}"
+    return issubclass(one, another)
+
+# def is_entity(one, entity_type):
+#     # print(f"_is_object: {one}, {entity_type}")
+#     assert entity_type in (Object, Data, )
+
+#     if inspect.isclass(one):
+#         assert issubclass(one, Entity)
+#         return issubclass(one, entity_type)
+#     elif is_union(one):
+#         return all(is_entity(x, entity_type) for x in one.__args__)
+#     elif isinstance(one, typing._GenericAlias):
+#         assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity), f"{one}"
+
+#         if issubclass(one.__origin__, (Spread, Optional)):
+#             assert len(one.__args__) == 1
+#             return is_entity(one.__args__[0], entity_type)
+#         else:
+#             return issubclass(one.__origin__, entity_type)
+#     else:
+#         assert False, f"Never reach here [{type(one)}]"
+
+def is_object(one):
+    # return is_entity(one, Object)
+    return is_acceptable(one, Any[Object])
+
+def is_data(one):
+    # return is_entity(one, Data)
+    return is_acceptable(one, Any[Data])
 
 class Object(Entity): pass
 
 class Data(Entity): pass
 
+class Any(typing.Generic[typing.TypeVar("T")]): pass
+
 class Spread(Entity, typing.Generic[typing.TypeVar("T")]): pass
 
-Any = Object | Data
+class Optional(Entity, typing.Generic[typing.TypeVar("T")]): pass
 
 # Scalar
 
@@ -129,6 +215,12 @@ def first_arg(x):
 
 def is_union(x):
     return isinstance(x, types.UnionType) or isinstance(x, typing._UnionGenericAlias)
+
+def is_any(x):
+    return isinstance(x, typing._GenericAlias) and x.__origin__ == Any
+
+def is_optional(x):
+    return isinstance(x, typing._GenericAlias) and x.__origin__ == Optional
 
 def is_spread(x):
     return isinstance(x, typing._GenericAlias) and x.__origin__ == Spread
@@ -182,7 +274,7 @@ def get_categories():
     }
 
 if __name__ == "__main__":
-    assert is_acceptable(Array, Any)
+    # assert is_acceptable(Array, Any)
     assert is_acceptable(Array, Data)
     assert not is_acceptable(Array, Object)
     assert is_acceptable(Array, ArrayLike)
@@ -193,9 +285,39 @@ if __name__ == "__main__":
     assert is_acceptable(Spread[Array], Spread[Array])
     assert is_acceptable(Spread[Array], Spread[ArrayLike])
     assert is_acceptable(Spread[Array], Spread[Array])
-    assert is_acceptable(Spread[Array], Data)
+    assert not is_acceptable(Spread[Array], Data)
+    assert is_acceptable(Spread[Array], Spread[Data])
     assert is_acceptable(Spread[Plate96], Spread)
-    assert is_acceptable(Spread[Plate96], Object)
+    assert not is_acceptable(Spread[Plate96], Object)
+    assert is_acceptable(Spread[Plate96], Spread[Object])
+
+    assert not is_acceptable(Optional[Float], Float)
+    assert not is_acceptable(Float, Optional[Float])
+    assert is_acceptable(Optional[Float], Optional[Float])
+    assert is_acceptable(Optional[Float], Optional[Real])
+    assert not is_acceptable(Optional[Float], Optional[Object])
+    assert not is_acceptable(Optional[Float], Data)
+    assert not is_acceptable(Optional[Float], Object)
+    assert is_acceptable(Optional[Float], Optional)
+    assert not is_acceptable(Optional[Float], Spread)
+
+    assert is_acceptable(Optional[Plate96], Optional[Plate96])
+    assert is_acceptable(Optional[Plate96], Optional[Object])
+    assert not is_acceptable(Optional[Plate96], Plate96)
+    assert not is_acceptable(Optional[Plate96], Object)
+
+    assert is_object(Spread[Plate96])
+    assert is_object(Optional[Plate96])
+    assert not is_data(Spread[Plate96])
+    assert not is_data(Optional[Plate96])
+    assert is_object(Spread[Optional[Plate96]])
+    assert not is_object(Spread[Spread[Plate96 | Float]])
+    assert not is_object(Spread[Float | Spread[Plate96]])
+    assert is_data(Spread[Float | Array[Integer]])
+
+    assert not is_acceptable(Spread[Optional[Plate96]], Labware | Spread[Labware])
+    assert not is_acceptable(Spread[Optional[Plate96]], Spread[Labware])
+    assert not is_acceptable(Spread[Optional[Plate96]], Labware)
 
     assert Spread == Spread
     assert Spread[Float] != Spread

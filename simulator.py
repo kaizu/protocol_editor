@@ -54,12 +54,12 @@ class Simulator:
             if key in self.__tokens:
                 input_tokens[input.name()] = self.__tokens.pop(key)
             else:
-                assert node.is_optional_port(input.name()), f"{node} {input.name()}"  # chek if optional
+                assert node.is_free_port(input.name()), f"{node} {input.name()}"  # chek if free
 
         # input_tokens = {
         #     input.name(): self.__results[(graph_id, node.name(), input.name())]
         #     for input in node.input_ports()
-        #     if (graph_id, node.name(), input.name()) in self.__results  # For optional inputs
+        #     if (graph_id, node.name(), input.name()) in self.__results  # For free inputs
         # }
         node.run(input_tokens)
 
