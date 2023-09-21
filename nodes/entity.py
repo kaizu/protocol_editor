@@ -35,70 +35,6 @@ def is_category(cls):
             return True
     return False
 
-# def _is_acceptable(one, another):
-#     # print(f"_is_acceptable: {one}, {another}")
-#     assert inspect.isclass(another)
-#     if inspect.isclass(one):
-#         assert issubclass(one, Entity)
-#         return issubclass(one, another)
-#     elif is_union(one):
-#         return all(_is_acceptable(x, another) for x in one.__args__)
-#     elif isinstance(one, typing._GenericAlias):
-#         assert inspect.isclass(one.__origin__), f"{one}"
-#         return issubclass(one.__origin__, another)
-#     assert False, f"Never reach here [{type(one)}]"
-
-# def is_acceptable(one, another):
-#     # print(f"is_acceptable: {one}, {another}")
-#     if inspect.isclass(another):
-#         assert issubclass(another, Entity)
-#         return _is_acceptable(one, another)
-#     elif is_union(another):
-#         return any(is_acceptable(one, x) for x in another.__args__)
-#     elif isinstance(another, typing._GenericAlias):
-#         return (
-#             isinstance(one, typing._GenericAlias)
-#             and _is_acceptable(one, another.__origin__)
-#             and len(one.__args__) == len(another.__args__)
-#             and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
-#         )
-#     assert False, f"Never reach here: {another} ({type(another)})"
-
-# def _is_acceptable(one, another):
-#     assert inspect.isclass(one), f"{one}"
-#     if inspect.isclass(another):
-#         return issubclass(one, another)
-#     elif is_union(another):
-#         return any(_is_acceptable(one, x) for x in another.__args__)
-#     elif isinstance(another, typing._GenericAlias):
-#         assert inspect.isclass(another.__origin__), f"{another}"
-#         if another.__origin__ == Any:
-#             assert len(another.__args__) == 1, f"{another}"
-#             return _is_acceptable(one, another.__args__[0])
-#         return issubclass(one, another.__origin__)
-#     assert False, f"Never reach here [{type(another)}]"
-
-# def is_acceptable(one, another):
-#     if inspect.isclass(one):
-#         assert issubclass(one, Entity)
-#         return _is_acceptable(one, another)
-#     elif is_union(one):
-#         return all(is_acceptable(x, another) for x in one.__args__)
-#     elif isinstance(one, typing._GenericAlias):
-#         if inspect.isclass(another) or is_union(another):
-#             return is_acceptable(one.__origin__, another)
-#         elif isinstance(another, typing._GenericAlias):
-#             if another.__origin__ == Any:
-#                 assert len(another.__args__) == 1, f"{another}"
-#                 return all(is_acceptable(x, another) for x in one.__args__)
-#             else:
-#                 return (
-#                     _is_acceptable(one.__origin__, another.__origin__)
-#                     and len(one.__args__) == len(another.__args__)
-#                     and all(is_acceptable(x, y) for x, y in zip(one.__args__, another.__args__))
-#                 )
-#     assert False, f"Never reach here [{type(one)}]"
-
 def is_acceptable(one, another):
     # Union
     if is_union(one):
@@ -132,26 +68,6 @@ def is_acceptable(one, another):
     assert inspect.isclass(one), f"{one}"
     assert inspect.isclass(another), f"{another}"
     return issubclass(one, another)
-
-# def is_entity(one, entity_type):
-#     # print(f"_is_object: {one}, {entity_type}")
-#     assert entity_type in (Object, Data, )
-
-#     if inspect.isclass(one):
-#         assert issubclass(one, Entity)
-#         return issubclass(one, entity_type)
-#     elif is_union(one):
-#         return all(is_entity(x, entity_type) for x in one.__args__)
-#     elif isinstance(one, typing._GenericAlias):
-#         assert inspect.isclass(one.__origin__) and issubclass(one.__origin__, Entity), f"{one}"
-
-#         if issubclass(one.__origin__, (Spread, Optional)):
-#             assert len(one.__args__) == 1
-#             return is_entity(one.__args__[0], entity_type)
-#         else:
-#             return issubclass(one.__origin__, entity_type)
-#     else:
-#         assert False, f"Never reach here [{type(one)}]"
 
 def is_object(one):
     # return is_entity(one, Object)
