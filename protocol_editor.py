@@ -352,7 +352,8 @@ if __name__ == '__main__':
 
     app.setStyle("Fusion")
     mypalette = QPalette()
-    mypalette.setColor(QPalette.Text, QColor(192, 192, 192))
+    # mypalette.setColor(QPalette.Text, QColor(192, 192, 192))
+    mypalette.setColor(QPalette.Text, QColor(0, 0, 0))
     app.setPalette(mypalette)
 
     with open('./config.yaml') as f:

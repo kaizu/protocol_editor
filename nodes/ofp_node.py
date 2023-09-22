@@ -12,7 +12,7 @@ import dataclasses
 from Qt import QtGui, QtCore
 
 from NodeGraphQt import BaseNode
-from NodeGraphQt.constants import NodePropWidgetEnum
+from NodeGraphQt.constants import NodePropWidgetEnum, PortEnum
 from NodeGraphQt.nodes.port_node import PortInputNode
 
 from nodes import entity
@@ -39,12 +39,16 @@ def draw_square_port(painter, rect, info):
 
     # mouse over port color.
     if info['hovered']:
-        color = QtGui.QColor(14, 45, 59)
-        border_color = QtGui.QColor(136, 255, 35, 255)
+        color = QtGui.QColor(*PortEnum.HOVER_COLOR.value)
+        border_color = QtGui.QColor(*PortEnum.HOVER_BORDER_COLOR.value)
+        # color = QtGui.QColor(14, 45, 59)
+        # border_color = QtGui.QColor(136, 255, 35, 255)
     # port connected color.
     elif info['connected']:
-        color = QtGui.QColor(195, 60, 60)
-        border_color = QtGui.QColor(200, 130, 70)
+        color = QtGui.QColor(*PortEnum.ACTIVE_COLOR.value)
+        border_color = QtGui.QColor(*PortEnum.ACTIVE_BORDER_COLOR.value)
+        # color = QtGui.QColor(195, 60, 60)
+        # border_color = QtGui.QColor(200, 130, 70)
     # default port color
     else:
         color = QtGui.QColor(*info['color'])
@@ -232,7 +236,6 @@ def trait_node_base(cls):
                 painter_func = painter_func or draw_square_port
             elif entity.is_data(traits):
                 multi_input = False
-                color = color or (180, 80, 0)
             return super(_TraitNodeBase, self).add_input(name, multi_input, display_name, color, locked, painter_func)
 
         def add_output(self, name='input', multi_output=False, display_name=True, color=None, locked=False, painter_func=None):
@@ -242,7 +245,6 @@ def trait_node_base(cls):
                 painter_func = painter_func or draw_square_port
             elif entity.is_data(traits):
                 multi_output = True
-                color = color or (180, 80, 0)
             return super(_TraitNodeBase, self).add_output(name, multi_output, display_name, color, locked, painter_func)
 
         def delete_input(self, name):
@@ -447,20 +449,27 @@ def ofp_node_base(cls):
             self._input_queue = deque()
             self.output_queue = deque()
 
+            self.set_property("text_color", (46, 41, 78))
+
         def update_color(self):
             logger.debug("update_color %s", self)
 
             value = self.get_node_status()
             if value == NodeStatusEnum.READY:
-                self.set_color(13, 18, 23)
+                self.set_color(244, 244, 246)
+                # self.set_color(13, 18, 23)
             elif value == NodeStatusEnum.ERROR:
-                self.set_color(63, 18, 23)
+                self.set_color(244, 138, 138)
+                # self.set_color(63, 18, 23)
             elif value == NodeStatusEnum.WAITING:
-                self.set_color(63, 68, 73)
+                self.set_color(138, 138, 140)
+                # self.set_color(63, 68, 73)
             elif value == NodeStatusEnum.RUNNING:
-                self.set_color(13, 18, 73)
+                self.set_color(138, 138, 246)
+                # self.set_color(13, 18, 73)
             elif value == NodeStatusEnum.DONE:
-                self.set_color(13, 68, 23)
+                self.set_color(138, 244, 140)
+                # self.set_color(13, 68, 23)
             else:
                 assert False, "Never reach here {}".format(value)
 
