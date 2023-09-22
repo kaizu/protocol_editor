@@ -583,32 +583,6 @@ class SwitchNode(BuiltinNode):
         src = "in1" if cond else "in2"
         return {"value": input_tokens[src]}
 
-# class BooleanTrueNode(BuiltinNode):
-
-#     __identifier__ = "builtins"
-
-#     NODE_NAME = "BooleanTrue"
-
-#     def __init__(self):
-#         super(BooleanTrueNode, self).__init__()
-#         self.add_output_w_traits("out", entity.Boolean)
-    
-#     def _execute(self, input_tokens):
-#         return {"out": {"value": True, "traits": entity.Boolean}}
-    
-# class BooleanFalseNode(BuiltinNode):
-
-#     __identifier__ = "builtins"
-
-#     NODE_NAME = "BooleanFalse"
-
-#     def __init__(self):
-#         super(BooleanFalseNode, self).__init__()
-#         self.add_output_w_traits("out", entity.Boolean)
-    
-#     def _execute(self, input_tokens):
-#         return {"out": {"value": False, "traits": entity.Boolean}}
-
 class BooleanNode(BuiltinNode):
 
     __identifier__ = "builtins"
