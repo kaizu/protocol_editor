@@ -3,9 +3,9 @@
 from logging import getLogger
 
 import copy
-import itertools
 import functools
 import signal
+import inspect
 
 from Qt import QtCore, QtWidgets
 from Qt.QtCore import QTimer
@@ -14,14 +14,17 @@ from Qt.QtGui import QPalette, QColor
 from NodeGraphQt import (
     NodeGraph,
     BaseNode,
-    # PropertiesBinWidget,
+    PropertiesBinWidget,
     # NodesTreeWidget,
     # NodesPaletteWidget
 )
-from NodeGraphQt.constants import PortTypeEnum
+from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
+from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
-from nodes import PortTraitsEnum, PortTraitsDict, NodeStatusEnum, SampleNode, ObjectNode
-from nodes.builtins import SwitchNode
+from nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits, traits_str
+from nodes.group import OFPGroupNode, ForEachNode
+import nodes.entity as entity
+import nodes.builtins
 from simulator import Simulator
 
 import pprint
@@ -30,80 +33,118 @@ pp = pprint.PrettyPrinter(indent=4)
 logger = getLogger(__name__)
 
 
+def get_graph_id(graph):
+    if graph.is_root:
+        return id(graph)  #XXX
+    return id(graph.node)  # SubGraph
+
 def run_session(graph):
-    logger.info("run_session")
-    graph._run()
+    logger.info(f"run_session {get_graph_id(graph)}")
+    # print(f"run_session {get_graph_id(graph)}")
+    
+    for node in graph.all_nodes():
+        logger.info('node {}'.format(node))
+        if not isinstance(node, (OFPNode, OFPGroupNode)):
+            logger.info('This is not an instance of OFPNode.')
+            continue
+        if node.get_node_status() != NodeStatusEnum.READY:
+            logger.info(f'Status is not READY. {node.get_node_status()}')
+            continue
+            
+        node.set_node_status(NodeStatusEnum.WAITING)
+
+        # if isinstance(node, OFPGroupNode):
+        #     subgraph = node.get_sub_graph()
+        #     if subgraph is not None:
+        #         #XXX
+        #         run_session(subgraph)
 
 def reset_session(graph):
     logger.info("reset_session")
-    all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
+    all_nodes = (node for node in graph.all_nodes() if isinstance(node, (OFPNode, OFPGroupNode)))
     for node in all_nodes:
-        if node.get_property('status') in (NodeStatusEnum.DONE.value, NodeStatusEnum.WAITING.value):
-            node.set_property('status', NodeStatusEnum.READY.value)
+        # if node.get_node_status() in (NodeStatusEnum.DONE, NodeStatusEnum.WAITING):
+        #     node.set_node_status(NodeStatusEnum.READY)
+        if node.get_node_status() in (NodeStatusEnum.DONE, NodeStatusEnum.WAITING, NodeStatusEnum.RUNNING):
+            node.reset()
+            node.set_node_status(NodeStatusEnum.READY)
 
 def verify_session(graph):
-    logger.info("verify_session")
-    all_nodes = (node for node in graph.all_nodes() if isinstance(node, SampleNode))
-    for node in all_nodes:
-        is_valid = True
+    logger.debug("verify_session")
 
-        if isinstance(node, ObjectNode):
-            station = graph.allocate_station(node)
-            node.set_property("station", station, push_undo=False)
-            is_valid = is_valid and station != ""
+    is_valid_graph = True
 
-        for port in itertools.chain(
-            node.input_ports(), node.output_ports()
-        ):
-            connected_ports = port.connected_ports()
-            if len(connected_ports) == 0:
-                is_valid = False
-                break
+    for node in graph.all_nodes():
+        if isinstance(node, (OFPNode, OFPGroupNode)):
+            pass
+        elif isinstance(node, PortInputNode):
+            is_valid_graph = is_valid_graph and all(len(port.connected_ports()) > 0 for port in node.output_ports())
+            continue
+        elif isinstance(node, PortOutputNode):
+            is_valid_graph = is_valid_graph and all(len(port.connected_ports()) > 0 for port in node.input_ports())
+            continue
+        else:
+            continue
 
-            port_traits = node.get_port_traits(port.name())
-            for another_port in connected_ports:
-                another_traits = another_port.node().get_port_traits(another_port.name())
-                if (
-                    (port.type_() == PortTypeEnum.IN.value and another_traits not in port_traits)
-                    or (port.type_() == PortTypeEnum.OUT.value and port_traits not in another_traits)
-                ):
-                    logger.info("%s %s %s", port.type_(), port_traits, another_traits)
-                    is_valid = False
-                    break
+        is_valid_node = node.check()
 
-        if not is_valid:
-            node.set_property('status', NodeStatusEnum.ERROR.value, push_undo=False)
-        elif node.get_property('status') == NodeStatusEnum.ERROR.value:
-            node.set_property('status', NodeStatusEnum.READY.value, push_undo=False)
+        if is_valid_node and isinstance(node, OFPGroupNode):
+            subgraph = node.get_sub_graph()
+            if subgraph is not None:
+                is_valid_subgraph = verify_session(subgraph)
+                is_valid_node = is_valid_node and is_valid_subgraph
+                if not is_valid_graph:
+                    error_msg = "Invalid subgraph"
+            else:
+                error_msg = "No subgraph"
+                is_valid_node = False
+
+            if not is_valid_node:
+                node.set_node_status(NodeStatusEnum.ERROR)
+                node.message = error_msg
+
+        if not is_valid_node:
+            is_valid_graph = False
 
     # logger.info(graph.serialize_session())
+    return is_valid_graph
 
 loop_count = 0
 
-def counter(graph):
-    global loop_count
-    loop_count += 1
-
-    sim = graph.simulator
+def _main_loop(graph, sim):
+    graph_id = get_graph_id(graph)
     all_nodes = [
         node for node in graph.all_nodes()
-        if isinstance(node, SampleNode)
+        if isinstance(node, (OFPNode, OFPGroupNode))
     ]
-    running = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.RUNNING.value]
-    waiting = [node for node in all_nodes if node.get_property('status') == NodeStatusEnum.WAITING.value]
-
-    for node in running:
-        new_status = sim.get_status(node)  # execute when done
-        logger.info("counter %s", new_status)
-        node.set_property('status', new_status.value)
+    if sim.num_tokens() == 0 and all(node.get_node_status() not in (NodeStatusEnum.WAITING, NodeStatusEnum.RUNNING) for node in all_nodes):
+        return
     
     for node in all_nodes:
-        if node.get_property('status') == NodeStatusEnum.DONE.value:
-            sim.transmit_token(node)
+        node.update_node_status()
+    
+    for node in all_nodes:
+        if node.get_node_status() == NodeStatusEnum.DONE:
+            sim.fetch_token(node, graph_id)
+            sim.transmit_token(node, graph_id)
 
-    for node in waiting:
-        if all(sim.has_token((node.name(), input_port.name())) for input_port in node.input_ports()):
-            node.set_property('status', sim.run(node).value)
+    for node in all_nodes:
+        if (
+            node.get_node_status() == NodeStatusEnum.WAITING
+            and all(
+                (node.is_optional_port(input_port.name()) and len(input_port.connected_ports()) == 0)
+                or sim.has_token((graph_id, node.name(), input_port.name()))
+                for input_port in node.input_ports()
+            )
+        ):
+            sim.run(node, graph_id)
+
+def main_loop(graph):
+    global loop_count
+    loop_count += 1
+    # logger.info(f"main_loop: loop_count={loop_count}, graph_id={get_graph_id(graph)}")
+
+    _main_loop(graph, graph.simulator)
 
 class MyModel:
 
@@ -126,7 +167,7 @@ class MyModel:
         return list(self.__stations.keys())
     
     def allocate_station(self, node):
-        if not isinstance(node, SampleNode):
+        if not isinstance(node, OFPNode):
             return ""
         class_name = node.__class__.__name__
         for key, value in self.__stations.items():
@@ -137,24 +178,19 @@ class MyModel:
 
 def declare_node(name, doc):
     def base_node_class(doc):
-        params = PortTraitsDict.copy()#{t.name: t for t in PortTraitsEnum}
-        #pp.pprint(params)
         for _, traits_str in doc.get('input', {}).items():
-            pp.pprint(traits_str)
-            pp.pprint(type(PortTraitsEnum))
-            pp.pprint(list(PortTraitsEnum))
-            traits = eval(traits_str, {}, params)
-            if traits in PortTraitsEnum.OBJECT:
-                return ObjectNode
+            traits, _ = evaluate_traits(traits_str)
+            if entity.is_acceptable(traits, entity.Object):
+                return ObjectOFPNode
         for _, traits_str in doc.get('output', {}).items():
             try:
-                traits = eval(traits_str, {}, params)
+                traits, _ = evaluate_traits(traits_str)
             except:
                 pass  # io_mapping
             else:
-                if traits in PortTraitsEnum.OBJECT:
-                    return ObjectNode
-        return SampleNode
+                if entity.is_acceptable(traits, entity.Object):
+                    return ObjectOFPNode
+        return DataOFPNode
     
     base_cls = base_node_class(doc)
 
@@ -162,22 +198,20 @@ def declare_node(name, doc):
         base_cls.__init__(self)
         self.__doc = doc
         input_traits = {}
-        #params = {t.name: t for t in PortTraitsEnum}
-        params = PortTraitsDict.copy()#{t.name: t for t in PortTraitsEnum}
+        params = entity.get_categories()
         for port_name, traits_str in doc.get('input', {}).items():
-            traits = eval(traits_str, {}, params)
+            traits, _ = evaluate_traits(traits_str)
             input_traits[port_name] = traits
-            self._add_input(port_name, traits)
+            self.add_input_w_traits(port_name, traits)
         for port_name, traits_str in doc.get('output', {}).items():
-            if traits_str in input_traits:
-                traits = input_traits[traits_str]
-                self._add_output(port_name, traits)
-                self.set_io_mapping(port_name, traits_str)
-            else:
-                traits = eval(traits_str, {}, params)
-                self._add_output(port_name, traits)
+            traits, is_static = evaluate_traits(traits_str, input_traits)
+            self.add_output_w_traits(port_name, traits, expression=None if is_static else traits_str)
+        for prop_name, value in doc.get('property', {}).items():
+            assert not self.has_property(prop_name)
+            self.create_property(prop_name, str(value), widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
 
-    cls = type(name, (base_cls, ), {'__identifier__': 'nodes.test', 'NODE_NAME': name, '__init__': __init__})
+    tab = doc.get("tab", "test")
+    cls = type(name, (base_cls, ), {'__identifier__': f'nodes.{tab}', 'NODE_NAME': name, '__init__': __init__})
     return cls
 
 class MyNodeGraph(NodeGraph):
@@ -213,19 +247,22 @@ class MyNodeGraph(NodeGraph):
             #     if not self.__mymodel.has_property(name):
             #         self.set_property(name, True)
             node.update_property()
-        elif isinstance(node, SampleNode):
+        elif isinstance(node, (OFPNode, OFPGroupNode)):
             node.update_color()
         verify_session(self)
 
     def _property_changed(self, node, name, value):
-        logger.info("property_changed %s %s %s", node, name, value)
+        logger.debug("property_changed %s %s %s", node, name, value)
         if isinstance(node, GraphPropertyNode) and self.__mymodel.has_property(name):
             self.set_property(name, value)
             verify_session(self)
-        elif isinstance(node, SampleNode) and name == "status":
+        elif isinstance(node, IONode):
+            verify_session(self)
+            node.update_color()
+        elif isinstance(node, (OFPNode, OFPGroupNode)) and name == "status":
             node.update_color()
             if value != NodeStatusEnum.DONE.value:
-                self.simulator.reset_token(node)
+                self.simulator.reset_token(node, get_graph_id(self))  #XXX
 
     def set_property(self, name, value):
         self.__mymodel.set_property(name, value)
@@ -240,29 +277,21 @@ class MyNodeGraph(NodeGraph):
     def allocate_station(self, node):
         return self.__mymodel.allocate_station(node)
     
-    def _run(self):
-        session = {}
+    def expand_group_node(self, node):
+        subgraph = super(MyNodeGraph, self).expand_group_node(node)
+        if subgraph is None:
+            return subgraph
+        
+        logger.info(f"Expand group node [{node.name()}]")
 
-        for node in self.all_nodes():
-            logger.info('node {}'.format(node))
-            if not isinstance(node, SampleNode):
-                logger.info('This is not an instance of SampleNode.')
-                continue
-            if node.get_property('status') != NodeStatusEnum.READY.value:
-                logger.info('Status is not READY. {}'.format(node.get_property('status')))
-                continue
+        subgraph.node_created.connect(self._node_created)
+        subgraph.nodes_deleted.connect(self._updated)
+        subgraph.port_connected.connect(self._updated)
+        subgraph.port_disconnected.connect(self._updated)
+        subgraph.property_changed.connect(self._property_changed)
+
+        return subgraph
             
-            node.set_property('status', NodeStatusEnum.WAITING.value, push_undo=False)
-
-            dependencies = []
-            for port in node.input_ports():
-                assert len(port.connected_ports()) <= 1
-                for another_port in port.connected_ports():
-                    dependencies.append(another_port.node().NODE_NAME)
-            session[node.NODE_NAME] = dependencies
-
-        logger.info(session)
-
 class GraphPropertyNode(BaseNode):
 
     def __init__(self, *property_names):
@@ -341,8 +370,17 @@ if __name__ == '__main__':
 
     graph.register_nodes([
         ConfigNode,
-        SwitchNode,
+        ForEachNode,
     ])
+
+    import nodes.manipulate
+
+    for module in (nodes.builtins, nodes.manipulate):
+        graph.register_nodes([
+            nodecls
+            for _, nodecls in inspect.getmembers(module, inspect.isclass)
+            if issubclass(nodecls, nodes.builtins.BuiltinNode) and nodecls is not nodes.builtins.BuiltinNode
+        ])
 
     # show the node graph widget.
     graph_widget = graph.widget
@@ -361,21 +399,22 @@ if __name__ == '__main__':
     
     # graph.create_node("nodes.config.ConfigNode")
     
-    # # create a node properties bin widget.
-    # properties_bin = PropertiesBinWidget(node_graph=graph)
-    # properties_bin.setWindowFlags(QtCore.Qt.Tool)
+    # create a node properties bin widget.
+    properties_bin = PropertiesBinWidget(node_graph=graph)
+    properties_bin.setWindowFlags(QtCore.Qt.Tool)
 
-    # # example show the node properties bin widget when a node is double clicked.
-    # def display_properties_bin(node):
-    #     if not properties_bin.isVisible():
-    #         properties_bin.show()
+    # example show the node properties bin widget when a node is double clicked.
+    def display_properties_bin(node):
+        if not properties_bin.isVisible():
+            properties_bin.show()
 
-    # # wire function to "node_double_clicked" signal.
-    # graph.node_double_clicked.connect(display_properties_bin)
+    # wire function to "node_double_clicked" signal.
+    graph.node_double_clicked.connect(display_properties_bin)
     
     t1 = QTimer()
-    t1.setInterval(3 * 1000)  # msec
-    t1.timeout.connect(functools.partial(counter, graph))
+    # t1.setInterval(3 * 1000)  # msec
+    t1.setInterval(0.5 * 1000)  # msec
+    t1.timeout.connect(functools.partial(main_loop, graph))
     t1.start()
 
     app.exec_()
