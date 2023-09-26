@@ -15,7 +15,7 @@ from NodeGraphQt import BaseNode
 from NodeGraphQt.constants import NodePropWidgetEnum, PortEnum
 from NodeGraphQt.nodes.port_node import PortInputNode
 
-from nodes import entity
+from ofpeditor.nodes import entity
 
 
 def draw_square_port(painter, rect, info):

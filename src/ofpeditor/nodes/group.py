@@ -2,18 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from logging import getLogger
-
-from nodes.ofp_node import evaluate_traits, NodeStatusEnum
-from nodes.ofp_node import ofp_node_base
-from nodes import entity
+logger = getLogger(__name__)
 
 from NodeGraphQt import GroupNode
-
 from NodeGraphQt.constants import NodePropWidgetEnum
-from nodes.node_widgets import DoubleSpinBoxWidget
 
-
-logger = getLogger(__name__)
+from ofpeditor.nodes.ofp_node import evaluate_traits, NodeStatusEnum
+from ofpeditor.nodes.ofp_node import ofp_node_base
+from ofpeditor.nodes import entity
+from ofpeditor.nodes.node_widgets import DoubleSpinBoxWidget
 
 
 class OFPGroupNode(ofp_node_base(GroupNode)):

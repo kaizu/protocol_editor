@@ -4,8 +4,6 @@ from logging import getLogger
 
 logger = getLogger(__name__)
 
-import uuid
-import datetime
 import numpy
 
 from NodeGraphQt.constants import NodePropWidgetEnum
@@ -16,9 +14,9 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
-from nodes.ofp_node import NodeStatusEnum, OFPNode, IONode, expand_input_tokens, traits_str
-from nodes import entity
-from nodes.node_widgets import DoubleSpinBoxWidget, LabelWidget #  PushButtonWidget
+from ofpeditor.nodes.ofp_node import NodeStatusEnum, OFPNode, IONode, expand_input_tokens, traits_str
+from ofpeditor.nodes import entity
+from ofpeditor.nodes.node_widgets import DoubleSpinBoxWidget, LabelWidget #  PushButtonWidget
 
 
 class BuiltinNode(OFPNode):

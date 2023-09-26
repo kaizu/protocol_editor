@@ -9,7 +9,7 @@ import uuid
 import datetime
 import inspect
 
-from nodes import entity
+from ofpeditor.nodes import entity
 
 
 class ServerBase:

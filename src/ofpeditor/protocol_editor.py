@@ -6,6 +6,7 @@ import copy
 import functools
 import signal
 import inspect
+import pathlib
 
 from Qt import QtCore, QtWidgets
 from Qt.QtCore import QTimer
@@ -21,11 +22,12 @@ from NodeGraphQt import (
 from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
-from nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits, traits_str
-from nodes.group import OFPGroupNode, ForEachNode
-import nodes.entity as entity
-import nodes.builtins
-from simulator import Simulator
+from ofpeditor.nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits, traits_str
+from ofpeditor.nodes.group import OFPGroupNode, ForEachNode
+from ofpeditor.nodes import entity
+from ofpeditor.nodes import builtins
+from ofpeditor.nodes import manipulate
+from ofpeditor.simulator import Simulator
 
 logger = getLogger(__name__)
 
@@ -356,7 +358,7 @@ if __name__ == '__main__':
     mypalette.setColor(QPalette.Text, QColor(0, 0, 0))
     app.setPalette(mypalette)
 
-    with open('./config.yaml') as f:
+    with open(pathlib.Path(__file__).parent / 'config.yaml') as f:
         doc = yaml.safe_load(f)
 
     # create graph controller.
@@ -364,20 +366,27 @@ if __name__ == '__main__':
     # graph.set_acyclic(False)
 
     # set up context menu for the node graph.
-    graph.set_context_menu_from_file('hotkeys/hotkeys.json')
+
+    import json, os
+    context_menu_path = str(pathlib.Path(__file__).parent / 'hotkeys/hotkeys.json')
+    with open(context_menu_path) as f:
+        s = f.read()
+        s = s.format(root=str(pathlib.Path(__file__).parent).replace(os.sep, '/'))
+        print(s)
+        data = json.loads(s)
+    graph.set_context_menu("graph", data)
+    # graph.set_context_menu_from_file(str(pathlib.Path(__file__).parent / 'hotkeys/hotkeys.json'))
 
     graph.register_nodes([
         ConfigNode,
         ForEachNode,
     ])
 
-    import nodes.manipulate
-
-    for module in (nodes.builtins, nodes.manipulate):
+    for module in (builtins, manipulate):
         graph.register_nodes([
             nodecls
             for _, nodecls in inspect.getmembers(module, inspect.isclass)
-            if issubclass(nodecls, nodes.builtins.BuiltinNode) and nodecls is not nodes.builtins.BuiltinNode
+            if issubclass(nodecls, builtins.BuiltinNode) and nodecls is not builtins.BuiltinNode
         ])
 
     # show the node graph widget.

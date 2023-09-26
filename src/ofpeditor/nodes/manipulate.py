@@ -10,10 +10,10 @@ import numpy
 
 from NodeGraphQt.constants import NodePropWidgetEnum
 
-from nodes import entity
-from nodes.builtins import BuiltinNode, input_node_base
+from ofpeditor.nodes import entity
+from ofpeditor.nodes.builtins import BuiltinNode, input_node_base
 
-from nodes.control import experiments
+from ofpeditor.nodes.control import experiments
 
 
 class ServeNode(input_node_base(entity.Labware, {"Plate (96-well)": entity.Plate96, "Tube (5ml)": entity.Tube5})):

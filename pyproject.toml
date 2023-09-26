@@ -38,7 +38,7 @@ readme = "README.md" # Optional
 # 'Programming Language' classifiers above, 'pip install' will check this
 # and refuse to install the project if the version does not match. See
 # https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
-requires-python = "==3.10.13"
+requires-python = "==3.10.*"
 
 # This is either text indicating the license for the distribution, or a file
 # that contains the license
@@ -70,7 +70,7 @@ authors = [
 # Classifiers help users find your project by categorizing it.
 #
 # For a list of valid classifiers, see https://pypi.org/classifiers/
-classifiers = [  # Optional
+# classifiers = [  # Optional
 #   # How mature is this project? Common values are
 #   #   3 - Alpha
 #   #   4 - Beta
@@ -150,7 +150,7 @@ dependencies = [ # Optional
 [tool.setuptools]
 # If there are data files included in your packages that need to be
 # installed, specify them here.
-package-data = {"nodes" = ["cat.jpg"], "hotkeys" = ["hotkeys.json"]}
+package-data = {"ofpeditor.nodes" = ["cat.jpg"], "ofpeditor.hotkeys" = ["hotkeys.json"], "ofpeditor" = ["config.yaml"]}
 
 [build-system]
 # These are the assumed default build requirements from pip:
