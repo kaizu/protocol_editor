@@ -3,9 +3,8 @@
 This is a prototype of the protocol editor.
 
 ```
-$ pip install -U git+https://github.com/jchanvfx/NodeGraphQt.git
-$ pip install PySide2
-$ python basic_example.py
+$ pip install .
+$ python -m ofpeditor.protocol_editor
 ```
 
 Press `Tab` to create a new node.

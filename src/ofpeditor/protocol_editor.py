@@ -19,14 +19,12 @@ from NodeGraphQt import (
     # NodesTreeWidget,
     # NodesPaletteWidget
 )
-from NodeGraphQt.constants import PortTypeEnum, NodePropWidgetEnum
+from NodeGraphQt.constants import NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
 from ofpeditor.nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits, traits_str
 from ofpeditor.nodes.group import OFPGroupNode, ForEachNode
-from ofpeditor.nodes import entity
-from ofpeditor.nodes import builtins
-from ofpeditor.nodes import manipulate
+from ofpeditor.nodes import entity, builtins, manipulate
 from ofpeditor.simulator import Simulator
 
 logger = getLogger(__name__)
@@ -372,7 +370,6 @@ if __name__ == '__main__':
     with open(context_menu_path) as f:
         s = f.read()
         s = s.format(root=str(pathlib.Path(__file__).parent).replace(os.sep, '/'))
-        print(s)
         data = json.loads(s)
     graph.set_context_menu("graph", data)
     # graph.set_context_menu_from_file(str(pathlib.Path(__file__).parent / 'hotkeys/hotkeys.json'))
