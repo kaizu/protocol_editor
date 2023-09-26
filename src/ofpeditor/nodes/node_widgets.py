@@ -1,3 +1,5 @@
+import pathlib
+
 from NodeGraphQt import NodeBaseWidget
 
 from PySide2.QtGui import QPixmap
@@ -52,7 +54,7 @@ class LabelWidget(NodeBaseWidget):
         super(LabelWidget, self).__init__(parent, name, label)
         
         label = PySide2.QtWidgets.QLabel()
-        pixmap = QPixmap('C:\\Users\\kaizu\\Documents\\Python Scripts\\protocol_editor\\nodes\\cat.jpg')
+        pixmap = QPixmap(str(pathlib.Path(__file__).parent / 'cat.jpg'))
         label.setPixmap(pixmap)
         self.set_custom_widget(label)
 
