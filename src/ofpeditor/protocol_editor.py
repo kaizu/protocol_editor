@@ -44,11 +44,9 @@ def run_session(graph):
         if not isinstance(node, (OFPNode, OFPGroupNode)):
             logger.info('This is not an instance of OFPNode.')
             continue
-        if node.get_node_status() != NodeStatusEnum.READY:
-            logger.info(f'Status is not READY. {node.get_node_status()}')
-            continue
             
-        node.set_node_status(NodeStatusEnum.WAITING)
+        # node.set_node_status(NodeStatusEnum.ACTIVE)
+        node.activate(force=True)
 
         # if isinstance(node, OFPGroupNode):
         #     subgraph = node.get_sub_graph()
@@ -60,11 +58,8 @@ def reset_session(graph):
     logger.info("reset_session")
     all_nodes = (node for node in graph.all_nodes() if isinstance(node, (OFPNode, OFPGroupNode)))
     for node in all_nodes:
-        # if node.get_node_status() in (NodeStatusEnum.DONE, NodeStatusEnum.WAITING):
-        #     node.set_node_status(NodeStatusEnum.READY)
-        if node.get_node_status() in (NodeStatusEnum.DONE, NodeStatusEnum.WAITING, NodeStatusEnum.RUNNING):
-            node.reset()
-            node.set_node_status(NodeStatusEnum.READY)
+        node.reset()
+    verify_session(graph)
 
 def verify_session(graph):
     logger.debug("verify_session")
@@ -97,7 +92,7 @@ def verify_session(graph):
                 is_valid_node = False
 
             if not is_valid_node:
-                node.set_node_status(NodeStatusEnum.ERROR)
+                node.set_node_status(NodeStatusEnum.NOT_READY)
                 node.message = error_msg
 
         if not is_valid_node:
@@ -114,20 +109,25 @@ def _main_loop(graph, sim):
         node for node in graph.all_nodes()
         if isinstance(node, (OFPNode, OFPGroupNode))
     ]
-    if sim.num_tokens() == 0 and all(node.get_node_status() not in (NodeStatusEnum.WAITING, NodeStatusEnum.RUNNING) for node in all_nodes):
+    if sim.num_tokens() == 0 and all(node.get_node_status() not in (NodeStatusEnum.ACTIVE, NodeStatusEnum.RUNNING, NodeStatusEnum.FINISHED) for node in all_nodes):
         return
-    
+
     for node in all_nodes:
         node.update_node_status()
-    
+
     for node in all_nodes:
-        if node.get_node_status() == NodeStatusEnum.DONE:
+        if node.get_node_status() == NodeStatusEnum.FINISHED:
             sim.fetch_token(node, graph_id)
             sim.transmit_token(node, graph_id)
+            node.set_node_status(NodeStatusEnum.READY)  #XXX
+
+    for node in all_nodes:
+        if node.get_node_status() == NodeStatusEnum.READY:
+            node.activate()
 
     for node in all_nodes:
         if (
-            node.get_node_status() == NodeStatusEnum.WAITING
+            node.get_node_status() == NodeStatusEnum.ACTIVE
             and all(
                 (node.is_free_port(input_port.name()) and len(input_port.connected_ports()) == 0)
                 or sim.has_token((graph_id, node.name(), input_port.name()))
@@ -258,7 +258,7 @@ class MyNodeGraph(NodeGraph):
             node.update_color()
         elif isinstance(node, (OFPNode, OFPGroupNode)) and name == "status":
             node.update_color()
-            if value != NodeStatusEnum.DONE.value:
+            if value != NodeStatusEnum.FINISHED.value:
                 self.simulator.reset_token(node, get_graph_id(self))  #XXX
 
     def set_property(self, name, value):

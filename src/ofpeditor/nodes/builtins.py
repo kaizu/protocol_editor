@@ -47,6 +47,10 @@ def input_node_base(base, items):
                 traits = self.ENTITY_TYPES.get(value, self.BASE_ENTITY_TYPE)
                 self.update_port_traits(self.get_output(self.OUTPUT_PORT_NAME), traits)
             super(_InputNodeBase, self).set_property(name, value, push_undo)
+        
+        def activate(self, force=False):
+            if force:
+                super(_InputNodeBase, self).activate(force=force)
 
     return _InputNodeBase
     
@@ -77,7 +81,7 @@ class GroupNode(BuiltinNode):
         for i in range(1, len(self.input_ports())):
             another_traits = self.get_input_port_traits(f'in{i+1}')
             if another_traits != traits:
-                self.set_node_status(NodeStatusEnum.ERROR)
+                self.set_node_status(NodeStatusEnum.NOT_READY)
                 self.message = f"Port [in{i+1}] has wrong traits [{traits_str(another_traits)}]. [{traits_str(traits)}] expected"
                 return False
         return True
@@ -147,7 +151,7 @@ class GroupObjectNode(BuiltinNode):
         for i in range(1, len(self.input_ports())):
             another_traits = self.get_input_port_traits(f'in{i+1}')
             if another_traits != traits:
-                self.set_node_status(NodeStatusEnum.ERROR)
+                self.set_node_status(NodeStatusEnum.NOT_READY)
                 self.message = f"Port [in{i+1}] has wrong traits [{traits_str(another_traits)}]. Port [in1] has [{traits_str(traits)}]"
                 return False
         return True
@@ -193,6 +197,10 @@ class IntegerNode(BuiltinNode):
     def _execute(self, input_tokens):
         return {"value": {"value": int(self.get_property("value")), "traits": entity.Integer}}
 
+    # def activate(self, force=False):
+    #     if force:
+    #         super(IntegerNode, self).activate(force=force)
+
 class FloatNode(BuiltinNode):
 
     __identifier__ = "builtins"
@@ -211,6 +219,10 @@ class FloatNode(BuiltinNode):
     def _execute(self, input_tokens):
         return {"value": {"value": float(self.get_property("value")), "traits": entity.Float}}
 
+    # def activate(self, force=False):
+    #     if force:
+    #         super(FloatNode, self).activate(force=force)
+
 class LiquidClassNode(BuiltinNode):  # IONode
 
     __identifier__ = "builtins"
@@ -226,6 +238,10 @@ class LiquidClassNode(BuiltinNode):  # IONode
     
     def _execute(self, input_tokens):
         return {"value": {"value": self.get_property("value"), "traits": entity.LiquidClass}}
+    
+    def activate(self, force=False):
+        if force:
+            super(LiquidClassNode, self).activate(force=force)
 
 class FullNode(BuiltinNode):
 
@@ -467,10 +483,11 @@ class DisplayNode(BuiltinNode):
     
     def _execute(self, input_tokens):
         assert "in1" in input_tokens
-        if self.is_optional():
-            self.set_property("in1", str(input_tokens["in1"]))
-        else:
-            self.set_property("in1", str({"in1": {"value": input_tokens["in1"]["value"], "traits": entity.first_arg(input_tokens["in1"]["traits"])}}))
+        self.set_property("in1", str(input_tokens["in1"]))
+        # if self.is_optional():
+        #     self.set_property("in1", str(input_tokens["in1"]))
+        # else:
+        #     self.set_property("in1", str({"in1": {"value": input_tokens["in1"]["value"], "traits": entity.first_arg(input_tokens["in1"]["traits"])}}))
         return {}
 
 class ScatterNode(BuiltinNode):
@@ -577,7 +594,7 @@ class SwitchNode(BuiltinNode):
         traits1 = self.get_input_port_traits('in1')
         traits2 = self.get_input_port_traits('in2')
         if traits1 != traits2:
-            self.set_node_status(NodeStatusEnum.ERROR)
+            self.set_node_status(NodeStatusEnum.NOT_READY)
             self.message = f"Port [in2] has wrong traits [{traits_str(traits2)}]. [{traits_str(traits1)}] expected"
             return False
         return True
@@ -602,6 +619,10 @@ class BooleanNode(BuiltinNode):
     def _execute(self, input_tokens):
         value = self.get_property("value")
         return {"out": {"value": value, "traits": entity.Boolean}}
+
+    # def activate(self, force=False):
+    #     if force:
+    #         super(BooleanNode, self).activate(force=force)
 
 class LogicalNotNode(BuiltinNode):
 
@@ -656,7 +677,7 @@ class MergeNode(BuiltinNode):
         traits1 = self.get_input_port_traits('in1')
         traits2 = self.get_input_port_traits('in2')
         if traits1 != traits2:
-            self.set_node_status(NodeStatusEnum.ERROR)
+            self.set_node_status(NodeStatusEnum.NOT_READY)
             self.message = f"Port [in2] has wrong traits [{traits_str(traits2)}]. [{traits_str(traits1)}] expected"
             return False
         return True
@@ -713,7 +734,7 @@ class ClientNode(BuiltinNode):
 
         self.add_text_input("address", "address", 'default')
         self.add_input_w_traits("in1", entity.Object, optional=True)
-        self.add_output_w_traits("contents", entity.Object, optional=True, expression="in1", io=True)
+        self.add_output_w_traits("remote", entity.Object, optional=True, expression="in1", io=True)
 
         self.server = None
 
@@ -734,14 +755,14 @@ class ClientNode(BuiltinNode):
                 self.server = node
                 break
         else:
-            self.set_node_status(NodeStatusEnum.ERROR)
+            self.set_node_status(NodeStatusEnum.NOT_READY)
             self.message = f"No connection [{self.get_property('address')}]"
             return False
         return True
 
     def _execute(self, input_tokens):
-        # return {"contents": {"value": input_tokens["in1"]["value"], "traits": entity.first_arg(input_tokens["in1"]["traits"])}}
-        return {"contents": input_tokens["in1"].copy()}
+        # return {"remote": {"value": input_tokens["in1"]["value"], "traits": entity.first_arg(input_tokens["in1"]["traits"])}}
+        return {"remote": input_tokens["in1"].copy()}
     
     def process_token(self, output_token):
         if self.server is None:
@@ -763,12 +784,13 @@ class ServerNode(BuiltinNode):
     def __init__(self):
         super(ServerNode, self).__init__()
         self.add_text_input("address", "address", 'default')
-        self.add_input_w_traits("contents", entity.Object, io=True)
-        self.add_output_w_traits("out1", entity.Object, expression="contents")
+        self.add_input_w_traits("remote", entity.Object, io=True)
+        self.add_output_w_traits("out1", entity.Object, expression="remote")
 
         self.clients = []
 
     def get_input_port_traits(self, name):
+        assert name == "remote"
         if len(self.clients) > 0:
             traits = self.clients[0].get_output_port_traits(name)
             if entity.is_optional(traits):
@@ -791,18 +813,18 @@ class ServerNode(BuiltinNode):
                 self.clients.append(node)
 
         if len(self.clients) == 0:
-            self.set_node_status(NodeStatusEnum.ERROR)
+            self.set_node_status(NodeStatusEnum.NOT_READY)
             self.message = f"No connection [{self.get_property('address')}]"
             return False
         
-        traits = (node.get_output_port_traits("contents") for node in self.clients)
+        traits = (node.get_output_port_traits("remote") for node in self.clients)
         traits = set(x if not entity.is_optional(x) else entity.first_arg(x) for x in traits)  # strip
         if len(traits) != 1:
-            self.set_node_status(NodeStatusEnum.ERROR)
+            self.set_node_status(NodeStatusEnum.NOT_READY)
             self.message = f"Inconsistent types [{traits}]"
             return False
 
         return True
 
     def _execute(self, input_tokens):
-        return {"out1": input_tokens["contents"]}
+        return {"out1": input_tokens["remote"]}

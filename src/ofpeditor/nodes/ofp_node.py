@@ -81,11 +81,13 @@ def evaluate_traits(expression, inputs=None):
     return eval(expression, {"__builtins__": {}}, locals), is_static
 
 class NodeStatusEnum(IntEnum):
+    UNKOWN = auto()
+    NOT_READY = auto()
     READY = auto()
-    ERROR = auto()
-    WAITING = auto()
+    ACTIVE = auto()
     RUNNING = auto()
-    DONE = auto()
+    FINISHED = auto()
+    ERROR = auto()
 
 def expand_input_tokens(input_tokens, expandables):
     if len(expandables) == 0:
@@ -360,9 +362,9 @@ def trait_node_base(cls):
                     break
 
             if not is_valid:
-                self.set_node_status(NodeStatusEnum.ERROR)
+                self.set_node_status(NodeStatusEnum.NOT_READY)
                 self.message = error_msg
-            elif self.get_node_status() == NodeStatusEnum.ERROR:
+            elif self.get_node_status() == NodeStatusEnum.NOT_READY:
                 self.set_node_status(NodeStatusEnum.READY)
                 self.message = ''
             return is_valid
@@ -448,12 +450,16 @@ def ofp_node_base(cls):
         def __init__(self):
             super(_OFPNodeBase, self).__init__()
 
-            self.create_property('status', NodeStatusEnum.ERROR)
+            self.create_property('status', NodeStatusEnum.NOT_READY)
 
             self._input_queue = deque()
             self.output_queue = deque()
 
             self.set_property("text_color", (46, 41, 78))
+
+        def activate(self, force=False):
+            if self.get_node_status() == NodeStatusEnum.READY:
+                self.set_node_status(NodeStatusEnum.ACTIVE)
 
         def update_color(self):
             logger.debug("update_color %s", self)
@@ -461,19 +467,16 @@ def ofp_node_base(cls):
             value = self.get_node_status()
             if value == NodeStatusEnum.READY:
                 self.set_color(244, 244, 246)
-                # self.set_color(13, 18, 23)
-            elif value == NodeStatusEnum.ERROR:
-                self.set_color(244, 138, 138)
-                # self.set_color(63, 18, 23)
-            elif value == NodeStatusEnum.WAITING:
-                self.set_color(138, 138, 140)
-                # self.set_color(63, 68, 73)
+            elif value == NodeStatusEnum.NOT_READY:
+                self.set_color(255, 222, 241)
+            elif value == NodeStatusEnum.ACTIVE:
+                self.set_color(222, 241, 255)
             elif value == NodeStatusEnum.RUNNING:
-                self.set_color(138, 138, 246)
-                # self.set_color(13, 18, 73)
-            elif value == NodeStatusEnum.DONE:
-                self.set_color(138, 244, 140)
-                # self.set_color(13, 68, 23)
+                self.set_color(186, 234, 254)
+            elif value == NodeStatusEnum.FINISHED:
+                self.set_color(169, 219, 255)
+            elif value == NodeStatusEnum.ERROR:
+                self.set_color(255, 169, 219)
             else:
                 assert False, "Never reach here {}".format(value)
 
@@ -481,7 +484,7 @@ def ofp_node_base(cls):
             return NodeStatusEnum(self.get_property('status'))
         
         def set_node_status(self, newstatus):
-            logger.debug(f"set_node_status {repr(newstatus)}")
+            logger.info(f"set_node_status {repr(newstatus)}")
             self.set_property('status', newstatus.value, push_undo=False)
         
         def run(self, input_tokens):
@@ -490,8 +493,11 @@ def ofp_node_base(cls):
                 self.set_node_status(NodeStatusEnum.RUNNING)
         
         def reset(self):
+            if self.get_node_status() not in (NodeStatusEnum.ACTIVE, NodeStatusEnum.RUNNING, NodeStatusEnum.FINISHED, NodeStatusEnum.ERROR):
+                return
             self._input_queue.clear()
             self.output_queue.clear()
+            self.set_node_status(NodeStatusEnum.NOT_READY)
 
         def update_node_status(self):
             pass
@@ -515,12 +521,12 @@ class OFPNode(ofp_node_base(BaseNode)):
             # try:
             #     output_tokens = self.execute(self._input_queue.popleft())
             # except:
-            #     self.set_node_status(NodeStatusEnum.ERROR)
+            #     self.set_node_status(NodeStatusEnum.NOT_READY)
 
             self.output_queue.append(output_tokens)
 
             if len(self._input_queue) == 0:
-                self.set_node_status(NodeStatusEnum.DONE)
+                self.set_node_status(NodeStatusEnum.FINISHED)
 
 class ObjectOFPNode(OFPNode):
 

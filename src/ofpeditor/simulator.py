@@ -43,7 +43,7 @@ class Simulator:
                     self.__tokens[new_key] = new_value
             else:
                 for connected in output.connected_ports():
-                    if connected.node().get_node_status() == NodeStatusEnum.WAITING:
+                    if connected.node().get_node_status() == NodeStatusEnum.ACTIVE:
                         # send = True
                         new_key = (graph_id, connected.node().name(), connected.name())
                         # self.__results[new_key] = value

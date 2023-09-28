@@ -20,7 +20,7 @@ class OFPGroupNode(ofp_node_base(GroupNode)):
 
     def update_node_status(self):
         current_status = self.get_node_status()
-        if current_status == NodeStatusEnum.RUNNING:
+        if current_status == NodeStatusEnum.ACTIVE:
             assert len(self._input_queue) > 0
 
             output_tokens = self.execute(self._input_queue.popleft())
@@ -32,7 +32,7 @@ class OFPGroupNode(ofp_node_base(GroupNode)):
             self.output_queue.append(output_tokens)
 
             if len(self._input_queue) == 0:
-                self.set_node_status(NodeStatusEnum.DONE)
+                self.set_node_status(NodeStatusEnum.FINISHED)
 
     def run(self, input_tokens):
         super(OFPGroupNode, self).run(input_tokens)
