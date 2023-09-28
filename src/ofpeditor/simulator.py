@@ -3,6 +3,7 @@
 import itertools
 
 from ofpeditor.nodes.ofp_node import OFPNode, NodeStatusEnum
+from ofpeditor.nodes.builtins import ClientNode
 
 from logging import getLogger
 
@@ -34,13 +35,19 @@ class Simulator:
                 continue
             logger.info('transmit_token %s', node)
             value = self.__tokens[key]
-            send = False
-            for connected in output.connected_ports():
-                if connected.node().get_node_status() == NodeStatusEnum.WAITING:
-                    send = True
-                    new_key = (graph_id, connected.node().name(), connected.name())
-                    # self.__results[new_key] = value
-                    self.__tokens[new_key] = value
+            # send = False
+            if isinstance(node, ClientNode):
+                new_value = node.process_token(value)
+                if new_value is not None:
+                    new_key = (graph_id, node.server.name(), output.name())
+                    self.__tokens[new_key] = new_value
+            else:
+                for connected in output.connected_ports():
+                    if connected.node().get_node_status() == NodeStatusEnum.WAITING:
+                        # send = True
+                        new_key = (graph_id, connected.node().name(), connected.name())
+                        # self.__results[new_key] = value
+                        self.__tokens[new_key] = value
             # if send:
             #     del self.__tokens[key]
             del self.__tokens[key]  #XXX: An object might lost

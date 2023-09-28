@@ -22,7 +22,7 @@ from NodeGraphQt import (
 from NodeGraphQt.constants import NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
-from ofpeditor.nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits, traits_str
+from ofpeditor.nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits
 from ofpeditor.nodes.group import OFPGroupNode, ForEachNode
 from ofpeditor.nodes import entity, builtins, manipulate
 from ofpeditor.simulator import Simulator
@@ -404,7 +404,7 @@ if __name__ == '__main__':
 
     # wire function to "node_double_clicked" signal.
     graph.node_double_clicked.connect(display_properties_bin)
-    
+
     t1 = QTimer()
     # t1.setInterval(3 * 1000)  # msec
     t1.setInterval(0.5 * 1000)  # msec

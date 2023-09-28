@@ -115,6 +115,7 @@ class PortTraits:
     free: bool = False
     expand: bool = False
     optional: bool = False
+    io: bool = False
 
 def trait_node_base(cls):
     class _TraitNodeBase(cls):
@@ -222,6 +223,9 @@ def trait_node_base(cls):
 
         def is_expandable_port(self, name):
             return self.__port_traits[name].expand
+
+        def is_io_port(self, name):
+            return self.__port_traits[name].io
         
         @property
         def expandable_ports(self):
@@ -289,7 +293,7 @@ def trait_node_base(cls):
                 tooltip += f' Message: "{text}"'
             node_item.setToolTip(tooltip)
 
-        def add_input_w_traits(self, name, traits, *, free=False, expand=False, optional=False):
+        def add_input_w_traits(self, name, traits, *, free=False, expand=False, optional=False, io=False):
             if optional:
                 traits = traits | entity.Optional[traits]
             if expand:
@@ -298,12 +302,12 @@ def trait_node_base(cls):
             assert not free or entity.is_data(traits)
             assert entity.is_object(traits) or entity.is_data(traits)
 
-            port_traits = PortTraits(traits=traits, free=free, expand=expand, optional=optional)
+            port_traits = PortTraits(traits=traits, free=free, expand=expand, optional=optional, io=io)
             self.__port_traits[name] = port_traits  # required
-            self.add_input(name)
+            self.add_input(name, locked=io)
             self.set_port_traits(self.get_input(name), port_traits)
 
-        def add_output_w_traits(self, name, traits, *, expand=False, expression=None, optional=False):
+        def add_output_w_traits(self, name, traits, *, expand=False, expression=None, optional=False, io=False):
             if optional:
                 traits = traits | entity.Optional[traits]
             if expand:
@@ -315,9 +319,9 @@ def trait_node_base(cls):
             if expression is not None:
                 self.__io_mapping[name] = expression
 
-            port_traits = PortTraits(traits=traits, free=False, expand=expand, optional=optional)
+            port_traits = PortTraits(traits=traits, free=False, expand=expand, optional=optional, io=io)
             self.__port_traits[name] = port_traits  # required
-            self.add_output(name)
+            self.add_output(name, locked=io)
             self.set_port_traits(self.get_output(name), port_traits)
 
         def check(self):
@@ -333,7 +337,7 @@ def trait_node_base(cls):
                 connected_ports = port.connected_ports()
 
                 if len(connected_ports) == 0:
-                    if not self.is_free_port(port.name()):
+                    if not self.is_free_port(port.name()) and not self.is_io_port(port.name()):
                         is_valid = False
                         error_msg = f"Port [{port.name()}] is disconnected"
                         break
@@ -350,7 +354,7 @@ def trait_node_base(cls):
                 port_traits_def = self.get_port_traits_def(port.name())
 
                 connected_ports = port.connected_ports()
-                if len(connected_ports) == 0 and entity.is_object(port_traits_def):
+                if len(connected_ports) == 0 and entity.is_object(port_traits_def) and not self.is_io_port(port.name()):
                     is_valid = False
                     error_msg = f"Port [{port.name()}] is disconnected"
                     break

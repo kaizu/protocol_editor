@@ -467,7 +467,10 @@ class DisplayNode(BuiltinNode):
     
     def _execute(self, input_tokens):
         assert "in1" in input_tokens
-        self.set_property("in1", str(input_tokens["in1"]))
+        if self.is_optional():
+            self.set_property("in1", str(input_tokens["in1"]))
+        else:
+            self.set_property("in1", str({"in1": {"value": input_tokens["in1"]["value"], "traits": entity.first_arg(input_tokens["in1"]["traits"])}}))
         return {}
 
 class ScatterNode(BuiltinNode):
@@ -546,7 +549,10 @@ class InspectNode(BuiltinNode):
     
     def _execute(self, input_tokens):
         assert "in1" in input_tokens
-        self.set_property("in1", str(input_tokens["in1"]))
+        if self.is_optional():
+            self.set_property("in1", str(input_tokens["in1"]))
+        else:
+            self.set_property("in1", str({"in1": {"value": input_tokens["in1"]["value"], "traits": entity.first_arg(input_tokens["in1"]["traits"])}}))
         return {"out1": input_tokens["in1"].copy()}
 
 class SwitchNode(BuiltinNode):
@@ -695,4 +701,108 @@ class BranchNode(BuiltinNode):
             return {"out1": {"value": value, "traits": traits}, "out2": {"value": None, "traits": traits}}
         else:
             return {"out1": {"value": None, "traits": traits}, "out2": {"value": value, "traits": traits}}
-            
+
+class ClientNode(BuiltinNode):
+
+    __identifier__ = "experimental"
+
+    NODE_NAME = "Client (Object)"
+
+    def __init__(self):
+        super(ClientNode, self).__init__()
+
+        self.add_text_input("address", "address", 'default')
+        self.add_input_w_traits("in1", entity.Object, optional=True)
+        self.add_output_w_traits("contents", entity.Object, optional=True, expression="in1", io=True)
+
+        self.server = None
+
+    def check(self):
+        logger.debug("ClientNode: check")
+        self.server = None
+
+        if not super(ClientNode, self).check():
+            return False
+                
+        if self.graph is None:
+            self.message = ""
+            return False
+
+        for node in self.graph.all_nodes():
+            if isinstance(node, ServerNode) and node.get_property("address") == self.get_property("address"):
+                logger.info(f"{self} is connected to {node}.")
+                self.server = node
+                break
+        else:
+            self.set_node_status(NodeStatusEnum.ERROR)
+            self.message = f"No connection [{self.get_property('address')}]"
+            return False
+        return True
+
+    def _execute(self, input_tokens):
+        # return {"contents": {"value": input_tokens["in1"]["value"], "traits": entity.first_arg(input_tokens["in1"]["traits"])}}
+        return {"contents": input_tokens["in1"].copy()}
+    
+    def process_token(self, output_token):
+        if self.server is None:
+            return None
+        value = output_token["value"]
+        traits = output_token["traits"]
+        if entity.is_optional(traits):
+            traits = entity.first_arg(traits)
+            if value is None:
+                return None
+        return {"value": value, "traits": traits}
+
+class ServerNode(BuiltinNode):
+
+    __identifier__ = "experimental"
+
+    NODE_NAME = "Server (Object)"
+
+    def __init__(self):
+        super(ServerNode, self).__init__()
+        self.add_text_input("address", "address", 'default')
+        self.add_input_w_traits("contents", entity.Object, io=True)
+        self.add_output_w_traits("out1", entity.Object, expression="contents")
+
+        self.clients = []
+
+    def get_input_port_traits(self, name):
+        if len(self.clients) > 0:
+            traits = self.clients[0].get_output_port_traits(name)
+            if entity.is_optional(traits):
+                traits = entity.first_arg(traits)
+            return traits
+        return super(ServerNode, self).get_input_port_traits(name)
+
+    def check(self):
+        logger.debug("ServerNode: check")
+        self.clients = []
+        if not super(ServerNode, self).check():
+            return False
+        
+        if self.graph is None:
+            self.message = ""
+            return False
+
+        for node in self.graph.all_nodes():
+            if isinstance(node, ClientNode) and node.get_property("address") == self.get_property("address"):
+                self.clients.append(node)
+
+        if len(self.clients) == 0:
+            self.set_node_status(NodeStatusEnum.ERROR)
+            self.message = f"No connection [{self.get_property('address')}]"
+            return False
+        
+        traits = (node.get_output_port_traits("contents") for node in self.clients)
+        traits = set(x if not entity.is_optional(x) else entity.first_arg(x) for x in traits)  # strip
+        if len(traits) != 1:
+            self.set_node_status(NodeStatusEnum.ERROR)
+            self.message = f"Inconsistent types [{traits}]"
+            return False
+
+        return True
+
+    def _execute(self, input_tokens):
+        return {"out1": input_tokens["contents"]}

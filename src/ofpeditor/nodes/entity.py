@@ -126,7 +126,7 @@ class Plate96(Plate): pass
 ArrayLike = Plate96 | Array  # deprecated
 
 def first_arg(x):
-    assert isinstance(x, typing._GenericAlias)
+    assert isinstance(x, typing._GenericAlias), str(x)
     return x.__args__[0]
 
 def is_union(x):
