@@ -18,7 +18,7 @@ from ofpeditor.nodes.control import experiments
 
 class ServeNode(input_node_base(entity.Labware, {"Plate (96-well)": entity.Plate96, "Tube (5ml)": entity.Tube5})):
 
-    __identifier__ = "builtins"
+    __identifier__ = "manipulate"
 
     NODE_NAME = "Serve"
 
@@ -29,7 +29,7 @@ class ServeNode(input_node_base(entity.Labware, {"Plate (96-well)": entity.Plate
 
 class StoreLabwareNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "manipulate"
 
     NODE_NAME = "StoreLabware"
 
@@ -54,7 +54,7 @@ class StoreLabwareNode(BuiltinNode):
     
 class StoreArtifactsNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "manipulate"
 
     NODE_NAME = "StoreArtifacts"
 
@@ -74,7 +74,7 @@ class StoreArtifactsNode(BuiltinNode):
 
 class DispenseLiquid96WellsNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "manipulate"
 
     NODE_NAME = "DispenseLiquid96Wells"
 
@@ -109,7 +109,7 @@ class DispenseLiquid96WellsNode(BuiltinNode):
 
 class ReadAbsorbance3ColorsNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "manipulate"
 
     NODE_NAME = "ReadAbsorbance3Colors"
 

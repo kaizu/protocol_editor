@@ -58,7 +58,7 @@ class GroupNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "Group"
+    NODE_NAME = "Group (Data)"
 
     def __init__(self):
         super(GroupNode, self).__init__()
@@ -108,7 +108,7 @@ class GroupNode(BuiltinNode):
 
 class AsArrayNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "AsArray"
 
@@ -129,7 +129,7 @@ class GroupObjectNode(BuiltinNode):
 
     __identifier__ = "builtins"
 
-    NODE_NAME = "GroupObject"
+    NODE_NAME = "Group (Object)"
 
     def __init__(self):
         super(GroupObjectNode, self).__init__()
@@ -181,7 +181,7 @@ class GroupObjectNode(BuiltinNode):
 
 class IntegerNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "primitive"
 
     NODE_NAME = "Integer"
 
@@ -203,7 +203,7 @@ class IntegerNode(BuiltinNode):
 
 class FloatNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "primitive"
 
     NODE_NAME = "Float"
 
@@ -225,7 +225,7 @@ class FloatNode(BuiltinNode):
 
 class LiquidClassNode(BuiltinNode):  # IONode
 
-    __identifier__ = "builtins"
+    __identifier__ = "primitive"
 
     NODE_NAME = "LiquidClass"
 
@@ -245,7 +245,7 @@ class LiquidClassNode(BuiltinNode):  # IONode
 
 class FullNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "Full"
 
@@ -264,7 +264,7 @@ class FullNode(BuiltinNode):
 
 class RangeNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "Range"
 
@@ -287,7 +287,7 @@ class RangeNode(BuiltinNode):
 
 class LinspaceNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "Linspace"
 
@@ -309,7 +309,7 @@ class LinspaceNode(BuiltinNode):
 
 class RandomUniformNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "RandomUniform"
 
@@ -331,7 +331,7 @@ class RandomUniformNode(BuiltinNode):
 
 class RepeatNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "Repeat"
 
@@ -348,7 +348,7 @@ class RepeatNode(BuiltinNode):
 
 class TileNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "Tile"
 
@@ -365,7 +365,7 @@ class TileNode(BuiltinNode):
 
 class SliceNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "Slice"
 
@@ -388,7 +388,7 @@ class SliceNode(BuiltinNode):
 
 class SumNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "Sum"
 
@@ -403,7 +403,7 @@ class SumNode(BuiltinNode):
 
 class LengthNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "array"
 
     NODE_NAME = "Length"
 
@@ -472,7 +472,7 @@ class MulNode(BuiltinNode):
 
 class DisplayNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "inspect"
 
     NODE_NAME = "Display"
 
@@ -492,7 +492,7 @@ class DisplayNode(BuiltinNode):
 
 class ScatterNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "inspect"
 
     NODE_NAME = "Scatter"
 
@@ -553,7 +553,7 @@ class ScatterNode(BuiltinNode):
 
 class InspectNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "inspect"
 
     NODE_NAME = "Inspect"
 
@@ -606,7 +606,7 @@ class SwitchNode(BuiltinNode):
 
 class BooleanNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "logical"
 
     NODE_NAME = "Boolean"
 
@@ -626,7 +626,7 @@ class BooleanNode(BuiltinNode):
 
 class LogicalNotNode(BuiltinNode):
 
-    __identifier__ = "builtins"
+    __identifier__ = "logical"
 
     NODE_NAME = "LogicalNot"
 

@@ -23,7 +23,7 @@ from NodeGraphQt.constants import NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
 from ofpeditor.nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits
-from ofpeditor.nodes.group import OFPGroupNode, ForEachNode
+# from ofpeditor.nodes.group import OFPGroupNode, ForEachNode
 from ofpeditor.nodes import entity, builtins, manipulate
 from ofpeditor.simulator import Simulator
 
@@ -225,10 +225,10 @@ class MyNodeGraph(NodeGraph):
         self.simulator = simulator or Simulator()
         self.__mymodel = MyModel(doc.get('model', {}))
 
-        self.register_nodes([
-            declare_node(key, value)
-            for key, value in doc.get('node', {}).items()
-        ])
+        # self.register_nodes([
+        #     declare_node(key, value)
+        #     for key, value in doc.get('node', {}).items()
+        # ])
 
         for station in self.__mymodel.list_stations():
             self.set_property(station, True)
@@ -288,6 +288,9 @@ class MyNodeGraph(NodeGraph):
         subgraph.property_changed.connect(self._property_changed)
 
         return subgraph
+
+    def _register_builtin_nodes(self):
+        pass  # do nothing
             
 class GraphPropertyNode(BaseNode):
 
@@ -374,10 +377,10 @@ if __name__ == '__main__':
     graph.set_context_menu("graph", data)
     # graph.set_context_menu_from_file(str(pathlib.Path(__file__).parent / 'hotkeys/hotkeys.json'))
 
-    graph.register_nodes([
-        ConfigNode,
-        ForEachNode,
-    ])
+    # graph.register_nodes([
+    #     ConfigNode,
+    #     ForEachNode,
+    # ])
 
     for module in (builtins, manipulate):
         graph.register_nodes([
