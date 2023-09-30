@@ -88,23 +88,14 @@ class LabelWidget(NodeBaseWidget):
 
 class PushButtonWidget(NodeBaseWidget):
 
-    def __init__(self, parent=None, name='', label='', text="Push"):
+    def __init__(self, parent=None, name='', label='', text="Push", on_value_changed=None):
         super(PushButtonWidget, self).__init__(parent, name, label)
-        
         button = PySide2.QtWidgets.QPushButton(text)
+        button.setVisible(False)
         self.set_custom_widget(button)
+        self.__value = None
+        self.__on_value_changed = on_value_changed
 
-        # connect up the signals & slots.
-        self.wire_signals()
-
-    def wire_signals(self):
-        widget = self.get_custom_widget()
-        widget.clicked.connect(self.on_button_clicked)
-        # widget.valueChanged.connect(self.on_value_changed)
-
-    def on_button_clicked(self, *args, **kwargs):
-        print("Saluton!")
-    
     @property
     def type_(self):
         return 'PushButtonWidget'
@@ -116,7 +107,7 @@ class PushButtonWidget(NodeBaseWidget):
         Returns:
             str: current text.
         """
-        return ''
+        return self.__value
 
     def set_value(self, value=''):
         """
@@ -125,10 +116,46 @@ class PushButtonWidget(NodeBaseWidget):
         Args:
             text (str): new text.
         """
-        if value != self.get_value():
-            # self.get_custom_widget().setValue(value)
-            # self.on_value_changed()
-            pass
+        if self.__value != value:
+            self.__value, value = value, self.__value  # swap
+            if self.__on_value_changed is not None:
+                self.__on_value_changed(self.__value, value)
+
+class ValueStoreWidget(NodeBaseWidget):
+
+    def __init__(self, parent=None, name='', label='', init=None, on_value_changed=None):
+        super(ValueStoreWidget, self).__init__(parent, name, label)
+        
+        widget = PySide2.QtWidgets.QLabel()
+        widget.setVisible(False)
+        self.set_custom_widget(widget)
+        self.__value = init
+        self.__on_value_changed = on_value_changed
+
+    @property
+    def type_(self):
+        return 'ValueStoreWidget'
+
+    def get_value(self):
+        """
+        Returns the widgets current text.
+
+        Returns:
+            str: current text.
+        """
+        return self.__value
+
+    def set_value(self, value=''):
+        """
+        Sets the widgets current text.
+
+        Args:
+            text (str): new text.
+        """
+        if self.__value != value:
+            self.__value, value = value, self.__value  # swap
+            if self.__on_value_changed is not None:
+                self.__on_value_changed(self.__value, value)
 
 # class MyNodeLineEdit(NodeBaseWidget):
 

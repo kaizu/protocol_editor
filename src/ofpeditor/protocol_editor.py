@@ -23,9 +23,11 @@ from NodeGraphQt.constants import NodePropWidgetEnum
 from NodeGraphQt.nodes.port_node import PortInputNode, PortOutputNode
 
 from ofpeditor.nodes.ofp_node import NodeStatusEnum, OFPNode, ObjectOFPNode, DataOFPNode, IONode, evaluate_traits
-# from ofpeditor.nodes.group import OFPGroupNode, ForEachNode
+from ofpeditor.nodes.group import OFPGroupNode #, ForEachNode
 from ofpeditor.nodes import entity, builtins, manipulate
 from ofpeditor.simulator import Simulator
+
+from ofpeditor.nodes.builtins import UnpackNode  #XXX
 
 logger = getLogger(__name__)
 
@@ -216,10 +218,12 @@ class MyNodeGraph(NodeGraph):
     def __init__(self, simulator=None, doc=None):
         super(MyNodeGraph, self).__init__()
 
-        self.node_created.connect(self._node_created)
-        self.nodes_deleted.connect(self._updated)
-        self.port_connected.connect(self._updated)
-        self.port_disconnected.connect(self._updated)
+        self.node_created.connect(self._node_updated)
+        self.nodes_deleted.connect(functools.partial(self._node_updated, deleted=True))
+        self.port_connected.connect(self._pipe_updated)
+        self.port_disconnected.connect(functools.partial(self._pipe_updated, disconnected=True))
+        # self.port_connected.connect(self._updated)
+        # self.port_disconnected.connect(self._updated)
         self.property_changed.connect(self._property_changed)
 
         self.simulator = simulator or Simulator()
@@ -233,19 +237,26 @@ class MyNodeGraph(NodeGraph):
         for station in self.__mymodel.list_stations():
             self.set_property(station, True)
 
-    def _updated(self, *args, **kwargs):
-        logger.info("updated %s %s", args, kwargs)
+    def _pipe_updated(self, one, another, disconnected=False):
+        logger.info(f"_pipe_updated {one} {another} {disconnected}")
+
+        if isinstance(one.node(), UnpackNode):
+            one.node().unpack_input_traits()
+        if isinstance(another.node(), UnpackNode):
+            another.node().unpack_input_traits()
+
         verify_session(self)
 
-    def _node_created(self, node):
-        logger.info("node_created %s", node)
-        if isinstance(node, GraphPropertyNode):
-            # for name in node.property_names:
-            #     if not self.__mymodel.has_property(name):
-            #         self.set_property(name, True)
-            node.update_property()
-        elif isinstance(node, (OFPNode, OFPGroupNode)):
-            node.update_color()
+    def _node_updated(self, node, deleted=False):
+        logger.info(f"_node_updated {node} {deleted}")
+        if not deleted:
+            if isinstance(node, GraphPropertyNode):
+                # for name in node.property_names:
+                #     if not self.__mymodel.has_property(name):
+                #         self.set_property(name, True)
+                node.update_property()
+            elif isinstance(node, (OFPNode, OFPGroupNode)):
+                node.update_color()
         verify_session(self)
 
     def _property_changed(self, node, name, value):

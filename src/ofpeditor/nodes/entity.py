@@ -45,8 +45,9 @@ def is_acceptable(one, another):
     # typing._GenericAlias
     if isinstance(one, typing._GenericAlias) and isinstance(another, typing._GenericAlias):
         if another.__origin__ == Any:
-            assert len(one.__args__) == 1, f"{one}"  #FIXME:
-            return is_acceptable(one.__args__[0], another)
+            # assert len(one.__args__) == 1, f"{one}"  #FIXME:
+            # return is_acceptable(one.__args__[0], another)
+            return any(is_acceptable(x, another) for x in one.__args__)
         else:
             return (
                 is_acceptable(one.__origin__, another.__origin__)
@@ -86,6 +87,23 @@ class Any(Entity, typing.Generic[typing.TypeVar("T")]): pass
 class Spread(Entity, typing.Generic[typing.TypeVar("T")]): pass
 
 class Optional(Entity, typing.Generic[typing.TypeVar("T")]): pass
+
+# See typing._TupleType
+class _StructType(typing._SpecialGenericAlias, _root=True):
+    @typing._tp_cache
+    def __getitem__(self, params):
+        if not isinstance(params, tuple):
+            params = (params,)
+        if len(params) >= 2 and params[-1] is ...:
+            msg = "Struct[t, ...]: t must be a type."
+            params = tuple(typing._type_check(p, msg) for p in params[:-1])
+            return self.copy_with((*params, typing._TypingEllipsis))
+        msg = "Struct[t0, t1, ...]: each t must be a type."
+        params = tuple(typing._type_check(p, msg) for p in params)
+        return self.copy_with(params)
+
+class _Struct(Entity): pass
+Struct = _StructType(_Struct, -1, inst=False, name='Struct')
 
 # Scalar
 
@@ -131,6 +149,9 @@ def first_arg(x):
 
 def is_union(x):
     return isinstance(x, types.UnionType) or isinstance(x, typing._UnionGenericAlias)
+
+def is_struct(x):
+    return x is Struct or isinstance(x, typing._GenericAlias) and x.__origin__ == _Struct
 
 def is_any(x):
     return isinstance(x, typing._GenericAlias) and x.__origin__ == Any
@@ -238,6 +259,14 @@ if __name__ == "__main__":
     assert Spread == Spread
     assert Spread[Float] != Spread
     assert Spread[Float] not in (Spread, )
+
+    assert is_struct(Struct)
+    assert is_struct(Struct[Plate96])
+    assert is_acceptable(Struct[Plate96, Array[Float]], _Struct)  #XXX:
+    assert is_acceptable(Struct[Plate96, Array[Float]], Struct[Labware, Array])
+    assert not is_acceptable(Struct[Plate96, Array[Float]], Struct[Labware])
+    assert is_object(Struct[Plate96, Array[Float]])
+    assert is_data(Struct[Plate96, Array[Float]])
 
     # print(Array96, is_category(Array96))
     # print(ArrayLike, is_category(ArrayLike))

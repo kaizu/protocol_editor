@@ -16,7 +16,7 @@ plt.style.use('dark_background')
 
 from ofpeditor.nodes.ofp_node import NodeStatusEnum, OFPNode, IONode, expand_input_tokens, traits_str
 from ofpeditor.nodes import entity
-from ofpeditor.nodes.node_widgets import DoubleSpinBoxWidget, LabelWidget #  PushButtonWidget
+from ofpeditor.nodes.node_widgets import DoubleSpinBoxWidget, LabelWidget, ValueStoreWidget
 
 
 class BuiltinNode(OFPNode):
@@ -530,27 +530,6 @@ class ScatterNode(BuiltinNode):
         self.get_widget("plot").set_image(img)
         return {}
 
-# class TriggerNode(BuiltinNode):
-
-#     __identifier__ = "builtins"
-
-#     NODE_NAME = "Trigger"
-
-#     def __init__(self):
-#         super(TriggerNode, self).__init__()
-
-#         widget = PushButtonWidget(self.view, name="value")
-#         # self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
-#         self.add_custom_widget(widget)
-
-#         self.add_output_w_traits("value", entity.Integer)
-#         # self.create_property("out1", "0", widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
-    
-#     def _execute(self, input_tokens):
-#         return {"value": {"value": 0, "traits": entity.Trigger}}
-
-# import fluent.experiments
-
 class InspectNode(BuiltinNode):
 
     __identifier__ = "inspect"
@@ -828,3 +807,178 @@ class ServerNode(BuiltinNode):
 
     def _execute(self, input_tokens):
         return {"out1": input_tokens["remote"]}
+
+class PackNode(BuiltinNode):
+
+    __identifier__ = "experimental"
+
+    NODE_NAME = "Pack"
+
+    def __init__(self):
+        super(PackNode, self).__init__()
+
+        widget = DoubleSpinBoxWidget(self.view, label="obj", name="ninputs1", minimum=1, maximum=10)
+        widget.get_custom_widget().valueChanged.connect(self.on_ninputs1_value_changed)
+        self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+
+        widget = DoubleSpinBoxWidget(self.view, label="data", name="ninputs2", minimum=0, maximum=10)
+        widget.get_custom_widget().valueChanged.connect(self.on_ninputs2_value_changed)
+        self.add_custom_widget(widget, widget_type=NodePropWidgetEnum.QLINE_EDIT.value)
+
+        self.set_port_deletion_allowed(True)
+
+        self.add_input_w_traits("obj1", entity.Any[entity.Object])
+        self.add_output_w_traits("value", entity.Any[entity.Object])
+
+    def get_output_port_traits(self, name):
+        assert name == "value"
+        traits = entity.Struct[tuple(self.get_input_port_traits(port.name()) for port in self.input_ports())]
+        # print(f"{traits}")
+        return traits
+
+    def _execute(self, input_tokens):
+        value, traits = [], []
+        for port in self.input_ports():
+            value.append(input_tokens[port.name()]["value"])
+            traits.append(input_tokens[port.name()]["traits"])
+        return {"value": {"value": tuple(value), "traits": entity.Struct[tuple(traits)]}}
+    
+    def on_ninputs1_value_changed(self, *args, **kwargs):
+        n = int(args[0])
+        nports = len([port for port in self.input_ports() if port.name().startswith("obj")])
+        if n > nports:
+            for i in range(nports, n):
+                self.add_input_w_traits(f"obj{i+1}", entity.Any[entity.Object])
+        elif n < nports:
+            for i in range(nports, n, -1):
+                name = f"obj{i}"
+                port = self.get_input(name)
+                for another in port.connected_ports():
+                    port.disconnect_from(another)
+                self.delete_input(name)
+
+    def on_ninputs2_value_changed(self, *args, **kwargs):
+        n = int(args[0])
+        nports = len([port for port in self.input_ports() if port.name().startswith("data")])
+        if n > nports:
+            for i in range(nports, n):
+                self.add_input_w_traits(f"data{i+1}", entity.Any[entity.Data])
+        elif n < nports:
+            for i in range(nports, n, -1):
+                name = f"data{i}"
+                port = self.get_input(name)
+                for another in port.connected_ports():
+                    port.disconnect_from(another)
+                self.delete_input(name)
+
+class UnpackNode(BuiltinNode):
+
+    __identifier__ = "experimental"
+
+    NODE_NAME = "Unpack"
+
+    def __init__(self):
+        super(UnpackNode, self).__init__()
+
+        widget = ValueStoreWidget(self.view, name="store", init=[], on_value_changed=self.on_value_changed)
+        self.add_custom_widget(widget)
+        
+        self.set_port_deletion_allowed(True)
+
+        self.add_input_w_traits("value", entity.Any[entity.Object])
+
+    def on_value_changed(self, value, prev):
+        #XXX: the custom widget set_value is former than port initialization in graph deserialize.
+        # print(f"on_value_changed {value} {prev}")
+
+        output_port_names = [port.name() for port in self.output_ports()]
+        for name in output_port_names:
+            port = self.get_output(name)
+            for another in port.connected_ports():
+                port.disconnect_from(another)
+            self.delete_output(name)
+        
+        for i, is_object in enumerate(value):
+            if is_object:
+                self.add_output_w_traits(f"out{i+1}", entity.Any[entity.Object])
+            else:
+                self.add_output_w_traits(f"out{i+1}", entity.Any[entity.Data])
+        
+    def unpack_input_traits(self):
+        traits = self.get_input_port_traits("value")
+        # print(f"unpack_input_traits: {traits}")
+
+        if not entity.is_acceptable(traits, entity._Struct):
+            return
+        
+        if (
+            len(traits.__args__) == len(self.output_ports())
+            # and all(entity.is_object(x) == port.name().startswith("obj") for x, port in zip(traits.__args__, self.output_ports()))
+        ):
+            return
+
+        value = []
+        for i, output_port_traits in enumerate(traits.__args__):
+            if entity.is_object(output_port_traits):
+                value.append(True)
+            elif entity.is_data(output_port_traits):
+                value.append(False)
+            else:
+                assert False, f"Never reach here [{output_port_traits}]"
+
+        self.set_property("store", value)
+        self.check()
+
+    def check(self):
+        # print(f"check: {self._port_traits} {len(self.output_ports())}")
+
+        if not super(UnpackNode, self).check():
+            return False
+
+        traits = self.get_input_port_traits("value")
+        # print(f"check [{traits}]")
+        # print(f"check [{len(traits.__args__)} == {len(self.output_ports())}]")
+
+        is_valid = True
+        if not entity.is_acceptable(traits, entity._Struct):
+            error_msg = f"Wrong input type given [{traits}]. Struct is required"
+            is_valid = False
+        elif len(traits.__args__) != len(self.output_ports()):
+            error_msg = f"The port number mismatches [{len(traits.__args__)} != {len(self.output_ports())}]"
+            is_valid = False
+
+        # for x, port in zip(traits.__args__, self.output_ports()):
+        #     if entity.is_object(x) != port.name().startswith("obj"):
+        #         self.msg = f"The port type mismatches [{port.name()}]"
+        #         self.set_node_status(NodeStatusEnum.NOT_READY)
+        #         return False
+
+        if not is_valid:
+            self.set_node_status(NodeStatusEnum.NOT_READY)
+            self.message = error_msg
+        elif self.get_node_status() == NodeStatusEnum.NOT_READY:
+            self.set_node_status(NodeStatusEnum.READY)
+            self.message = ''
+        return is_valid
+
+    def get_output_port_traits(self, name):
+        traits = self.get_input_port_traits("value")
+        # print(f"get_output_port_traits: {traits}")
+
+        if entity.is_acceptable(traits, entity._Struct) and len(traits.__args__) == len(self.output_ports()):
+            for output_port_traits, port in zip(traits.__args__, self.output_ports()):
+                if port.name() == name:
+                    return output_port_traits
+        
+        return super(UnpackNode, self).get_output_port_traits(name)
+
+    def _execute(self, input_tokens):
+        value = input_tokens["value"]["value"]
+        traits = input_tokens["value"]["traits"]
+        assert isinstance(value, tuple) and len(value) == len(traits.__args__)
+
+        output_tokens = {}
+        for i, (output_port_value, output_port_traits) in enumerate(zip(value, traits.__args__)):
+            name = f"out{i+1}"
+            output_tokens[name] = {"value": output_port_value, "traits": output_port_traits}
+        return output_tokens

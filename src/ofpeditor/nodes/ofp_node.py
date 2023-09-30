@@ -131,6 +131,10 @@ def trait_node_base(cls):
 
             self.create_property("message", "", widget_type=NodePropWidgetEnum.QTEXT_EDIT.value)
 
+        @property
+        def _port_traits(self):
+            return self.__port_traits.copy()
+        
         def get_port_traits_def(self, name):
             if name in self.__port_traits:
                 return self.__port_traits[name].traits
